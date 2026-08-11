@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eefaf3;
+  --color-brand-100: #d3f2e0;
+  --color-brand-200: #a6e4c2;
+  --color-brand-300: #6fd09f;
+  --color-brand-400: #3ab97d;
+  --color-brand-500: #1b8a56;
+  --color-brand-600: #146b43;
+  --color-brand-700: #0f5535;
+  --color-brand-800: #0b3f28;
+  --color-brand-900: #082e1d;
+
+  --color-mint-400: #7fe0b0;
+  --color-mint-500: #52d19a;
+
+  --color-ink: #0b1f17;
+  --color-fog: #f5f8f6;
+  --color-line: #dce7de;
+  --color-muted: #52705f;
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+body {
+  font-family: var(--font-body);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+@keyframes scan-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.scan-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: scan-sweep 1.4s ease-in-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-bar::after {
+    animation: none;
+  }
+}
