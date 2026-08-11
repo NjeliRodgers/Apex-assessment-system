@@ -41,11 +41,20 @@ export async function getCatalogApi(params?: { q?: string; category?: string }):
   return data.items;
 }
 
+export interface ApexPackageInstructions {
+  whatItCarries?: string;
+  whyStudyIt?: string;
+  whyCertificateMatters?: string;
+  howToCompleteSteps?: string[];
+  confidentialityNote?: string;
+}
+
 export interface CatalogItemDetail extends CatalogListItem {
   passMarkPercent?: number;
   modules?: { id: string; title: string; orderIndex: number }[];
   exam?: { id: string; name: string; costKsh: number } | null;
   course?: { id: string; name: string; costKsh: number } | null;
+  instructions?: ApexPackageInstructions | null;
 }
 
 export async function getCatalogItemApi(type: CatalogItemType, id: string): Promise<CatalogItemDetail> {
@@ -73,6 +82,11 @@ export interface ApexEnrollment {
   startedAt: string | null;
   completedAt: string | null;
   itemName?: string;
+  // Package enrollments only — lets the candidate tell packages apart by
+  // Exam ID and course name, not just the package name.
+  examId?: string | null;
+  examName?: string | null;
+  courseName?: string | null;
 }
 
 export async function enrollApi(
@@ -116,6 +130,8 @@ export async function getMyEnrollmentsApi(): Promise<ApexEnrollment[]> {
 export interface InterviewAccess {
   eligible: boolean;
   configured?: boolean;
+  pendingResultEmail?: boolean;
+  statusMessage?: string;
   costKsh?: number;
   passMarkPercent?: number;
   enrollmentStatus?: EnrollmentStatus | null;
@@ -212,17 +228,12 @@ export async function getExamQuestionsByIdApi(examId: string): Promise<ExamQuest
   return data;
 }
 
-export interface ExamSubmitResult {
-  scorePercent: number;
-  correctCount: number;
-  totalQuestions: number;
-  passed: boolean;
-  passMarkPercent: number;
-  attemptsUsed: number;
-  attemptsRemaining: number;
+export interface ExamSubmitResponse {
+  submittedAt: string;
+  attemptNumber: number;
 }
 
-export async function submitExamByIdApi(examId: string, answers: Record<string, number>): Promise<ExamSubmitResult> {
+export async function submitExamByIdApi(examId: string, answers: Record<string, number>): Promise<ExamSubmitResponse> {
   const res = await apiFetch(`/apex/exams/${examId}/submit`, {
     method: 'POST',
     headers: jsonHeaders,

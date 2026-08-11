@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getExamQuestionsByIdApi, submitExamByIdApi, ExamQuestion, ExamSubmitResult } from '../api/apexCatalogApi';
+import { getExamQuestionsByIdApi, submitExamByIdApi, ExamQuestion, ExamSubmitResponse } from '../api/apexCatalogApi';
 import { CheckCircle2, Clock, ClipboardCheck, LoaderCircle, XCircle } from 'lucide-react';
 
 interface ExamTakingPageProps {
@@ -21,7 +21,6 @@ export const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ examId, onBack }
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [result, setResult] = useState<ExamSubmitResult | null>(null);
   const [error, setError] = useState('');
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -81,8 +80,7 @@ export const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ examId, onBack }
     setSubmitting(true);
     setError('');
     try {
-      const data = await submitExamByIdApi(examId, answers);
-      setResult(data);
+      await submitExamByIdApi(examId, answers);
       setCompleted(true);
     } catch (err: any) {
       setError(err.message || 'Your exam could not be submitted. Please try again.');
@@ -111,33 +109,19 @@ export const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ examId, onBack }
   }
 
   if (completed) {
-    const passed = result?.passed;
     return (
       <div className="min-h-screen bg-fog flex items-center justify-center p-4">
         <div className="w-full max-w-md bg-white rounded-lg border border-line p-8 text-center space-y-4">
-          <div
-            className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${
-              passed ? 'bg-emerald-50' : 'bg-amber-50'
-            }`}
-          >
-            {passed ? <CheckCircle2 className="h-7 w-7 text-emerald-600" /> : <XCircle className="h-7 w-7 text-amber-600" />}
+          <div className="w-12 h-12 mx-auto rounded-full bg-brand-600 text-white flex items-center justify-center">
+            <CheckCircle2 className="h-7 w-7" />
           </div>
 
-          <h1 className="font-display text-2xl font-bold text-ink">{passed ? 'You passed!' : 'Exam submitted'}</h1>
+          <h1 className="font-display text-2xl font-bold text-ink">Submitted</h1>
 
-          {result && (
-            <p className="text-sm font-semibold text-ink">
-              Score: {result.scorePercent}% ({result.correctCount} of {result.totalQuestions} correct) · Pass mark:{' '}
-              {result.passMarkPercent}%
-            </p>
-          )}
+          <p className="text-sm font-semibold text-ink">Your Exam test has been received.</p>
 
           <p className="text-sm text-muted leading-relaxed">
-            {passed
-              ? 'Congratulations — you have met the pass mark. Your certificate progress has been updated.'
-              : result && result.attemptsRemaining > 0
-              ? `You did not meet the pass mark this time. You have ${result.attemptsRemaining} attempt(s) remaining.`
-              : 'You did not meet the pass mark and have used all your attempts for this exam.'}
+            Our Talent Acquisition Team will Review your Exam and you will receive your score on your Email within 24 Hours 
           </p>
 
           <button
@@ -180,7 +164,7 @@ export const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ examId, onBack }
             </div>
 
             <div>
-              <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">Exam</p>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">Certification assessment</p>
               <h1 className="font-display text-2xl font-bold text-ink mt-1">{examName}</h1>
               <p className="text-sm text-muted mt-2">Answer every question, then review your selections before submitting.</p>
             </div>
@@ -244,7 +228,7 @@ export const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ examId, onBack }
             disabled={!allQuestionsAnswered || submitting}
             className="px-5 py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Submitting exam…' : 'Submit exam'}
+            {submitting ? 'Submitting assessment…' : 'Submit assessment'}
           </button>
         </div>
       </main>

@@ -155,6 +155,22 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
     </div>
   );
 
+  if (access.pendingResultEmail) {
+    return (
+      <Shell>
+        {header}
+        <div className="bg-white rounded-lg border border-line p-6 text-center space-y-3">
+          <Hourglass className="h-6 w-6 text-brand-700 mx-auto" />
+          <p className="text-sm font-semibold text-ink">Assessment under review</p>
+          <p className="text-sm text-muted">
+            {access.statusMessage ||
+              'Your assessment submission is being reviewed. You will receive your result by email in 9–15 hours.'}
+          </p>
+        </div>
+      </Shell>
+    );
+  }
+
   if (!access.eligible) {
     return (
       <Shell>

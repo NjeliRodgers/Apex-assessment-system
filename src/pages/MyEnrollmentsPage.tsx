@@ -81,12 +81,23 @@ export const MyEnrollmentsPage: React.FC<MyEnrollmentsPageProps> = ({ onBack, on
                 className="w-full text-left bg-white rounded-lg border border-line p-5 flex items-center justify-between gap-4 hover:border-brand-300 transition cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-md border bg-fog flex items-center justify-center text-brand-700">
+                  <div className="w-9 h-9 rounded-md border bg-fog flex items-center justify-center text-brand-700 shrink-0">
                     {TYPE_ICON[e.itemType]}
                   </div>
                   <div>
                     <p className="font-semibold text-sm text-ink">{e.itemName || e.itemId}</p>
                     <p className="text-[11px] text-muted uppercase tracking-wide">{e.itemType}</p>
+                    {e.itemType === 'package' && (e.examId || e.courseName) && (
+                      <p className="text-[11px] text-muted mt-1 space-x-2">
+                        {e.examId && (
+                          <span>
+                            Exam ID: <span className="font-mono font-semibold text-brand-700">{e.examId}</span>
+                            {e.examName ? ` (${e.examName})` : ''}
+                          </span>
+                        )}
+                        {e.courseName && <span>· Course: {e.courseName}</span>}
+                      </p>
+                    )}
                   </div>
                 </div>
 

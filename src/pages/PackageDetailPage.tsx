@@ -33,6 +33,10 @@ import {
 
 interface PackageDetailPageProps {
   packageId: string;
+  // Set when the candidate arrived here via the Dashboard's "Verify & Launch
+  // Exam" box — auto-scrolls to and highlights the Exam module once loaded,
+  // instead of taking them to a standalone pay-per-exam page.
+  highlightExamId?: string;
   candidateName: string;
   candidateEmail: string;
   candidateStatus?: string;
@@ -53,6 +57,7 @@ type ModuleKey = 'all' | 'instructions' | 'exam' | 'course' | 'interview';
 
 export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   packageId,
+  highlightExamId,
   candidateName,
   candidateEmail,
   candidateStatus,
@@ -71,6 +76,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const [terms, setTerms] = useState<{ accepted: boolean; acceptedAt: string | null }>({ accepted: false, acceptedAt: null });
   const [interviewAccess, setInterviewAccess] = useState<InterviewAccess | null>(null);
   const [examPassed, setExamPassed] = useState(false);
+  const [pendingReview, setPendingReview] = useState(false);
   const [courseProgress, setCourseProgress] = useState<{ done: number; total: number } | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -105,6 +111,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         (e) => e.itemType === 'package' && e.itemId === packageId && e.status !== 'failed'
       );
       setEnrollment(pkgEnrollment || null);
+      setPendingReview(false);
 
       const isPaidUp = pkgEnrollment?.status === 'in_progress' || pkgEnrollment?.status === 'completed';
 
@@ -112,6 +119,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         const access = await getMyInterviewAccessApi(detail.exam.id);
         setInterviewAccess(access);
         setExamPassed(access.eligible);
+        setPendingReview(access.pendingResultEmail ?? false);
       }
 
       if (isPaidUp && detail.course) {
@@ -133,6 +141,18 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageId]);
+
+  const didAutoHighlight = useRef(false);
+  useEffect(() => {
+    if (didAutoHighlight.current) return;
+    if (!pkg || !highlightExamId) return;
+    if (pkg.exam?.id !== highlightExamId) return;
+    didAutoHighlight.current = true;
+    // Wait a tick so the module refs are attached before we scroll to them.
+    const handle = setTimeout(() => scrollToModule('exam'), 50);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pkg, highlightExamId]);
 
   const isPaidUp = enrollment?.status === 'in_progress' || enrollment?.status === 'completed';
 
@@ -513,16 +533,20 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
             </div>
             <div>
               <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">Module 1 · Free to read</p>
-              <h2 className="font-display text-xl font-bold text-ink">Instructions &amp; Guidelines</h2>
+              <h2 className="font-display text-xl font-bold text-ink">Instructions and Guidelines</h2>
             </div>
           </div>
 
           <div className="space-y-4 text-sm text-muted leading-relaxed">
             <p>
               <span className="font-semibold text-ink">What this package carries: </span>
-              {pkg.name}{pkg.exam ? ` includes the ${pkg.exam.name} exam` : ''}{pkg.course ? `, the ${pkg.course.name} short course (optional)` : ''}
-              {pkg.exam ? ', and a mandatory AI-agent interview' : ''}. You pay once for the whole package there is no
-              separate charge for the exam, the course, or the AI-agent interview.
+              {pkg.instructions?.whatItCarries ? pkg.instructions.whatItCarries : (
+                <>
+                  {pkg.name}{pkg.exam ? ` includes the ${pkg.exam.name} exam` : ''}{pkg.course ? `, the ${pkg.course.name} short course (optional)` : ''}
+                  {pkg.exam ? ', and a mandatory AI-agent interview' : ''}. You pay once for the whole package there is no
+                  separate charge for the exam, the course, or the AI-agent interview.
+                </>
+              )}
             </p>
 
             <div className="border border-line rounded-lg bg-fog p-4 space-y-2">
@@ -531,61 +555,76 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   </p>
 
   <p className="text-sm text-muted leading-6">
-    This package is built for candidates working toward standardized,
+    {pkg.instructions?.whyStudyIt || `This package is built for candidates working toward standardized,
     verifiable proof of competence in this field the kind employers and
     recruiters can check independently. Pick the package that matches your
     own profession or the role you're applying for. Every package on Apex is
     scoped to a specific professional track, so choose the one that reflects
-    what you actually do or want to be assessed on.
+    what you actually do or want to be assessed on.`}
   </p>
 </div>
 
-           <p className="leading-7 text-gray-700">
+          <p className="leading-7 text-gray-700">
   <span className="font-semibold text-ink">Why the certificate matters: </span>
-  Apex study provide a structured learning path and career journey for every candidate,with a professional certificate designed to
-  demonstrate your knowledge, skills, and readiness for your next career opportunity.
-  Apex provides standardized courses, examinations, and structured interview assessments
-  that help candidates prepare for the expectations of employers and recruitment firms
-  connecting talent with local and international opportunities across Africa and beyond.
-  <br />
-  <br />
-  Once earned, your certificate belongs to you and can be shared with employers and
-  recruitment firms. Each certificate includes a unique verification code and scannable
-  verification feature, allowing its authenticity and achievement to be independently
-  confirmed quickly and easily. This gives employers greater confidence in your
-  qualifications and can support faster, more reliable candidate screening.
-  <br />
-  <br />
-  We take assessment integrity seriously. Every candidate is expected to complete
-  courses, examinations, and interview assessments honestly and independently. Candidates
-  should ensure they have a reliable internet connection, a suitable device, and a
-  quiet environment before beginning an assessment. Any attempt to cheat, impersonate
-  another person, manipulate an assessment, or provide false information may result in
-  disqualification and the cancellation or withholding of certification.
-  <br />
-  <br />
-  Prepare thoroughly, take every stage seriously, and give your best effort. Your Apex
-  credential represents an achievement you have earned and can carry with you throughout
-  your professional journey. We wish you success as you prepare for your next career
-  opportunity.
+  {pkg.instructions?.whyCertificateMatters ? (
+    pkg.instructions.whyCertificateMatters.split('\n').map((para, i) => (
+      <span key={i}>
+        {para}
+        <br />
+        <br />
+      </span>
+    ))
+  ) : (
+    <>
+      Apex study provide a structured learning path and career journey for every candidate,with a professional certificate designed to
+      demonstrate your knowledge, skills, and readiness for your next career opportunity.
+      Apex provides standardized courses, examinations, and structured interview assessments
+      that help candidates prepare for the expectations of employers and recruitment firms
+      connecting talent with local and international opportunities across Africa and beyond.
+      <br /><br />
+      Once earned, your certificate belongs to you and can be shared with employers and
+      recruitment firms. Each certificate includes a unique verification code and scannable
+      verification feature, allowing its authenticity and achievement to be independently
+      confirmed quickly and easily. This gives employers greater confidence in your
+      qualifications and can support faster, more reliable candidate screening.
+      <br /><br />
+      We take assessment integrity seriously. Every candidate is expected to complete
+      courses, examinations, and interview assessments honestly and independently. Candidates
+      should ensure they have a reliable internet connection, a suitable device, and a
+      quiet environment before beginning an assessment. Any attempt to cheat, impersonate
+      another person, manipulate an assessment, or provide false information may result in
+      disqualification and the cancellation or withholding of certification.
+      <br /><br />
+      Prepare thoroughly, take every stage seriously, and give your best effort. Your Apex
+      credential represents an achievement you have earned and can carry with you throughout
+      your professional journey. We wish you success as you prepare for your next career
+      opportunity.
+    </>
+  )}
 </p>
 
 <div className="border border-line rounded-lg bg-fog p-4 space-y-2">
               <p className="text-xs font-semibold text-ink uppercase tracking-wide">How to complete this package</p>
               <ol className="space-y-1.5 text-sm text-muted list-decimal list-inside">
-                {pkg.course && <li>(Optional) Study the short course with the provided materials.</li>}
-                {pkg.exam && <li>Sit for the exam and reach the pass mark.</li>}
-                {pkg.exam && <li>Complete the AI-agent interview and reach its pass mark.</li>}
-                <li>Once you have passed both, You are given a Certificate of Completion By Our HR Team.</li>
+                {pkg.instructions?.howToCompleteSteps?.length ? (
+                  pkg.instructions.howToCompleteSteps.map((step, i) => <li key={i}>{step}</li>)
+                ) : (
+                  <>
+                    {pkg.course && <li>(Optional) Study the short course with the provided materials.</li>}
+                    {pkg.exam && <li>Sit for the exam and reach the pass mark.</li>}
+                    {pkg.exam && <li>Complete the AI-agent interview and reach its pass mark.</li>}
+                    <li>Once you have passed both, You are given a Certificate of Completion By Our HR Team.</li>
+                  </>
+                )}
               </ol>
             </div>
 
             <div className="flex items-start gap-2.5 border border-brand-200 bg-brand-50/60 rounded-lg p-4">
               <ShieldCheck className="h-4 w-4 text-brand-700 shrink-0 mt-0.5" />
               <p className="text-xs text-brand-800 leading-relaxed">
-                Your information is kept confidential and secure. Exam answers, interview recordings, and personal
+                {pkg.instructions?.confidentialityNote || `Your information is kept confidential and secure. Exam answers, interview recordings, and personal
                 details are only used to assess and certify you, and are never shared outside the Apex and HR team during review
-                process.
+                process.`}
               </p>
             </div>
           </div>
@@ -723,6 +762,13 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
 
             {!isPaidUp ? (
               lockedNotice('the AI-agent interview')
+            ) : pendingReview ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                <div className="font-semibold text-amber-800">Exam result pending review</div>
+                <p className="mt-1 text-muted">
+                  We are reviewing your exam submission. You will receive an email within 9–15 hours, and the AI interview unlocks after that.
+                </p>
+              </div>
             ) : !examPassed ? (
               lockedNotice('by passing the exam first')
             ) : interviewAccess?.enrollmentStatus === 'completed' ? (

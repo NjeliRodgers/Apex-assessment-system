@@ -8,9 +8,7 @@ import {
   UserCircle2,
   Sparkles,
   CheckCircle2,
-  ChevronRight,
-  BookOpen,
-  CalendarDays
+  ChevronRight
 } from 'lucide-react';
 import { getCatalogApi, CatalogListItem, CatalogItemType } from '../api/apexCatalogApi';
 
@@ -18,7 +16,7 @@ interface DashboardPageProps {
   candidateName: string;
   candidateEmail?: string;
   candidateStatus?: string;
-  onSelectItem: (type: CatalogItemType, id: string) => void;
+  onSelectItem: (type: CatalogItemType, id: string, highlightExamId?: string) => void;
   onLogout: () => void;
   onGoToEnrollments?: () => void;
   onGoToCertificates?: () => void;
@@ -106,22 +104,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setExamIdError('');
     if (!id) return;
 
-    // Exam IDs are informational (they tell the candidate which exam their
-    // recruiter needs passed) — this just finds it in the open catalog and
-    // takes them straight to it, it doesn't gate access to anything.
+    // Exam IDs tell the candidate which exam their recruiter needs passed.
+    // Every purchasable exam now lives inside a package (one payment covers
+    // exam + course + AI interview), so verifying an exam ID takes the
+    // candidate to that exam's package — never to a standalone pay-per-exam
+    // page — and highlights the Exam module once they land there.
     const match = exams.find((e) => e.id.toLowerCase() === id.toLowerCase());
-    if (match) {
-      onSelectItem('exam', match.id);
+    if (!match) {
+      setExamIdError(`No exam found with ID "${id}". Check the ID from your recruitment email and try again.`);
       return;
     }
-    setExamIdError(`No exam found with ID "${id}". Check the ID from your recruitment email and try again.`);
+
+    const coveringPackage = packages.find((p) => p.examId === match.id);
+    if (!coveringPackage) {
+      setExamIdError(
+        `This exam isn't linked to a package yet, so it can't be accessed directly. Please check with your recruiter.`
+      );
+      return;
+    }
+
+    onSelectItem('package', coveringPackage.id, match.id);
   };
 
   const renderPackageCard = (item: CatalogListItem) => {
-    const originalTotal =
-      item.examCostKsh != null && item.courseCostKsh != null ? item.examCostKsh + item.courseCostKsh : null;
-    const savings = originalTotal != null ? originalTotal - item.costKsh : null;
-
     return (
       <div
         key={`package-${item.id}`}
@@ -161,18 +166,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-1 border-t border-line">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-display font-bold text-xl text-ink">KSh {item.costKsh.toLocaleString()}</span>
-              {originalTotal != null && originalTotal > item.costKsh && (
-                <span className="text-xs text-muted line-through">KSh {originalTotal.toLocaleString()}</span>
-              )}
-            </div>
-            {savings != null && savings > 0 && (
-              <p className="text-[11px] font-semibold text-brand-600">Save KSh {savings.toLocaleString()}!</p>
-            )}
-          </div>
+        <div className="flex items-center justify-end pt-1 border-t border-line">
           <button
             type="button"
             onClick={() => onSelectItem('package', item.id)}
@@ -185,90 +179,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     );
   };
 
-  const renderExamCard = (item: CatalogListItem) => (
-    <div
-      key={`exam-${item.id}`}
-      className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-5 space-y-4 hover:shadow-[0_12px_28px_-10px_rgba(15,85,53,0.18)] hover:border-brand-300 transition"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-mint-400/10 border border-mint-500/30 text-brand-700 font-mono text-[11px] font-semibold">
-          <KeyRound className="h-3.5 w-3.5" />
-          {item.id}
-        </span>
-        <span className="font-display font-bold text-base text-ink">KSh {item.costKsh.toLocaleString()}</span>
-      </div>
-
-      <div className="space-y-1">
-        <h3 className="font-display font-bold text-sm text-ink leading-snug">{item.name}</h3>
-        {item.description && <p className="text-xs text-muted leading-relaxed line-clamp-2">{item.description}</p>}
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 border border-line rounded-md bg-fog px-3 py-2.5 text-center">
-        <div>
-          <p className="text-[10px] text-muted uppercase tracking-wide">Questions</p>
-          <p className="text-sm font-bold text-ink">{item.questionsPerAttempt ?? '—'}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-muted uppercase tracking-wide">Time Limit</p>
-          <p className="text-sm font-bold text-ink">{item.timeLimitMinutes ? `${item.timeLimitMinutes}m` : '—'}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-muted uppercase tracking-wide">Passing Mark</p>
-          <p className="text-sm font-bold text-brand-700">{item.passMarkPercent ? `${item.passMarkPercent}%` : '—'}</p>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between pt-1 border-t border-line">
-        <span className="text-[11px] text-muted">{item.category ? `Category: ${item.category}` : ''}</span>
-        <button
-          type="button"
-          onClick={() => onSelectItem('exam', item.id)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-md shadow-sm cursor-pointer"
-        >
-          Launch Exam
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderCourseCard = (item: CatalogListItem) => (
-    <div
-      key={`course-${item.id}`}
-      className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-5 space-y-4 hover:shadow-[0_12px_28px_-10px_rgba(15,85,53,0.18)] hover:border-brand-300 transition"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="w-9 h-9 rounded-md border bg-brand-50 text-brand-700 border-brand-200 flex items-center justify-center">
-          <BookOpen className="h-5 w-5" />
-        </div>
-        <span className="font-display font-bold text-base text-ink">KSh {item.costKsh.toLocaleString()}</span>
-      </div>
-
-      <div className="space-y-1">
-        <h3 className="font-display font-bold text-sm text-ink leading-snug">{item.name}</h3>
-        {item.description && <p className="text-xs text-muted leading-relaxed line-clamp-2">{item.description}</p>}
-      </div>
-
-      <div className="flex items-center gap-4 text-[11px] text-muted font-mono">
-        {item.durationDays && (
-          <span className="flex items-center gap-1">
-            <CalendarDays className="h-3.5 w-3.5" />
-            About {item.durationDays} days
-          </span>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between pt-1 border-t border-line">
-        <span className="text-[11px] text-muted">{item.category ? `Category: ${item.category}` : ''}</span>
-        <button
-          type="button"
-          onClick={() => onSelectItem('course', item.id)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-md shadow-sm cursor-pointer"
-        >
-          Start Course
-        </button>
-      </div>
-    </div>
-  );
+  // Note: exam- and course-only cards were removed from this dashboard —
+  // only packages are purchasable here. Exam and course items still exist in
+  // the catalog for internal lookups (e.g. the exam-ID box below), but are
+  // never rendered as standalone, individually-payable cards.
 
   return (
     <div
@@ -518,7 +432,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   Certification Packages (Exam + Course + AI Interview Combined)
                 </h2>
                 <span className="px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold">
-                  One Payment · Full Access
+                  Career Advancement and Professional Development
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{packages.map(renderPackageCard)}</div>

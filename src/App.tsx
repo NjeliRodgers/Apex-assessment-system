@@ -19,7 +19,7 @@ type Screen = 'login' | 'signup' | 'forgot';
 
 type CandidateScreen =
   | { view: 'dashboard' }
-  | { view: 'detail'; itemType: CatalogItemType; itemId: string }
+  | { view: 'detail'; itemType: CatalogItemType; itemId: string; highlightExamId?: string }
   | { view: 'exam'; examId: string }
   | { view: 'course'; courseId: string }
   | { view: 'interview'; examId: string; examName: string }
@@ -52,8 +52,8 @@ const AuthedGate: React.FC = () => {
   }
 
   const goToDashboard = () => setScreen({ view: 'dashboard' });
-  const goToItem = (itemType: CatalogItemType | 'interview', itemId: string) =>
-    setScreen({ view: 'detail', itemType, itemId });
+  const goToItem = (itemType: CatalogItemType | 'interview', itemId: string, highlightExamId?: string) =>
+    setScreen({ view: 'detail', itemType, itemId, highlightExamId });
 
   switch (screen.view) {
     case 'detail':
@@ -64,6 +64,7 @@ const AuthedGate: React.FC = () => {
         return (
           <PackageDetailPage
             packageId={screen.itemId}
+            highlightExamId={screen.highlightExamId}
             candidateName={candidate.name}
             candidateEmail={candidate.email}
             candidateStatus={candidate.isActive ? 'Active' : 'Inactive'}
