@@ -4,7 +4,7 @@ import { FileCheck2, BookOpen, Layers, LoaderCircle } from 'lucide-react';
 
 interface MyEnrollmentsPageProps {
   onBack: () => void;
-  onSelectItem: (type: CatalogItemType | 'interview', id: string) => void;
+  onSelectItem: (type: CatalogItemType | 'interview', id: string, itemName?: string) => void;
 }
 
 const TYPE_ICON: Record<CatalogItemType | 'interview', React.ReactNode> = {
@@ -77,7 +77,9 @@ export const MyEnrollmentsPage: React.FC<MyEnrollmentsPageProps> = ({ onBack, on
               <button
                 key={e.id}
                 type="button"
-                onClick={() => onSelectItem(e.itemType, e.itemId)}
+                onClick={() =>
+                  onSelectItem(e.itemType, e.itemId, e.itemType === 'interview' ? (e.examName || e.itemName || e.itemId) : undefined)
+                }
                 className="w-full text-left bg-white rounded-lg border border-line p-5 flex items-center justify-between gap-4 hover:border-brand-300 transition cursor-pointer"
               >
                 <div className="flex items-center gap-3">

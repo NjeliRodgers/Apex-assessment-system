@@ -52,8 +52,17 @@ const AuthedGate: React.FC = () => {
   }
 
   const goToDashboard = () => setScreen({ view: 'dashboard' });
-  const goToItem = (itemType: CatalogItemType | 'interview', itemId: string, highlightExamId?: string) =>
-    setScreen({ view: 'detail', itemType, itemId, highlightExamId });
+  const goToItem = (itemType: CatalogItemType | 'interview', itemId: string, extra?: string) => {
+    // Interview enrollments aren't a catalog item — CatalogItemDetailPage
+    // and getCatalogItemApi only know 'exam' | 'course' | 'package'. Route
+    // these straight into the interview screen instead, which needs both
+    // the exam id and its name (passed through as `extra` from the caller).
+    if (itemType === 'interview') {
+      setScreen({ view: 'interview', examId: itemId, examName: extra || itemId });
+      return;
+    }
+    setScreen({ view: 'detail', itemType, itemId, highlightExamId: extra });
+  };
 
   switch (screen.view) {
     case 'detail':
