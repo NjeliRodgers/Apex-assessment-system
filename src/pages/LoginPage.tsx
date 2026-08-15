@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApexAuth } from '../auth/ApexAuthContext';
 import { AuthCard } from '../components/AuthCard';
-import { Mail, Lock } from 'lucide-react';
+import { Mail } from 'lucide-react';
+import { PasswordInput } from '../components/PasswordInput';
 
 interface LoginPageProps {
   onGoToSignup: () => void;
@@ -78,16 +79,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToSignup, onGoToForgot
               Forgot password?
             </button>
           </div>
-          <div className="relative">
-            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full pl-9 pr-3 py-2 bg-fog border border-line rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:bg-white"
-            />
-          </div>
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
 
         <button

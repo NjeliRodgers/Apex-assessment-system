@@ -433,7 +433,10 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               <Layers className="h-3.5 w-3.5" />
               {pkg.category ? `${pkg.category} · ` : ''}Certification Package
             </p>
-            <h2 className="font-display text-lg font-bold">{pkg.name}</h2>
+            <h2 className="font-display text-lg font-bold">
+              {pkg.name}
+              {pkg.packageId && <span className="font-bold"> - {pkg.packageId}</span>}
+            </h2>
             {pkg.description && <p className="text-sm text-white/85 leading-relaxed">{pkg.description}</p>}
           </div>
 

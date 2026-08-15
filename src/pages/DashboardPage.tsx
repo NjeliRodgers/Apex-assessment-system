@@ -147,7 +147,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         <div className="space-y-1">
-          <h3 className="font-display font-bold text-sm text-ink leading-snug">{item.name}</h3>
+          <h3 className="font-display font-bold text-sm text-ink leading-snug">
+            {item.name}
+            {item.packageId && <span className="text-ink"> - {item.packageId}</span>}
+          </h3>
           {item.description && <p className="text-xs text-muted leading-relaxed line-clamp-2">{item.description}</p>}
         </div>
 
@@ -155,13 +158,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {item.examId && (
             <p className="flex items-center gap-2 text-xs text-muted">
               <CheckCircle2 className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-              Includes Full Exam ID: <span className="font-mono font-semibold text-ink">{item.examId}</span>
+              Exam ID: <span className="font-mono font-semibold text-ink">{item.examId}</span>
             </p>
           )}
           {item.courseName && (
             <p className="flex items-center gap-2 text-xs text-muted">
               <CheckCircle2 className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-              Includes Short Training Course: <span className="font-semibold text-ink">{item.courseName}</span>
+              Training Course: <span className="font-semibold text-ink">{item.courseName}</span>
             </p>
           )}
         </div>
