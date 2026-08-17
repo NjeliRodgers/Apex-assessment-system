@@ -4,7 +4,6 @@ import {
   Layers,
   ListChecks,
   Award,
-  KeyRound,
   UserCircle2,
   Sparkles,
   CheckCircle2,
@@ -53,25 +52,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [activeTab, setActiveTab] = useState<TabKey>('all');
 
-  const [examIdInput, setExamIdInput] = useState('');
-  const [examIdError, setExamIdError] = useState('');
   const heroRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedQuery(searchInput.trim()), 350);
-    return () => clearTimeout(handle);
-  }, [searchInput]);
 
   useEffect(() => {
     let stillMounted = true;
     setLoading(true);
     setError('');
 
-    getCatalogApi({ q: debouncedQuery || undefined, category: categoryFilter || undefined })
+    getCatalogApi({ category: categoryFilter || undefined })
       .then((results) => {
         if (stillMounted) setItems(results);
       })
@@ -85,7 +76,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return () => {
       stillMounted = false;
     };
-  }, [debouncedQuery, categoryFilter]);
+  }, [categoryFilter]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -96,35 +87,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [items]);
 
   const packages = useMemo(() => items.filter((i) => i.type === 'package'), [items]);
-  const exams = useMemo(() => items.filter((i) => i.type === 'exam'), [items]);
-  const courses = useMemo(() => items.filter((i) => i.type === 'course'), [items]);
-
-  const handleVerifyExamId = () => {
-    const id = examIdInput.trim();
-    setExamIdError('');
-    if (!id) return;
-
-    // Exam IDs tell the candidate which exam their recruiter needs passed.
-    // Every purchasable exam now lives inside a package (one payment covers
-    // exam + course + AI interview), so verifying an exam ID takes the
-    // candidate to that exam's package — never to a standalone pay-per-exam
-    // page — and highlights the Exam module once they land there.
-    const match = exams.find((e) => e.id.toLowerCase() === id.toLowerCase());
-    if (!match) {
-      setExamIdError(`No exam found with ID "${id}". Check the ID from your recruitment email and try again.`);
-      return;
-    }
-
-    const coveringPackage = packages.find((p) => p.examId === match.id);
-    if (!coveringPackage) {
-      setExamIdError(
-        `This exam isn't linked to a package yet, so it can't be accessed directly. Please check with your recruiter.`
-      );
-      return;
-    }
-
-    onSelectItem('package', coveringPackage.id, match.id);
-  };
+  const filteredPackages = useMemo(() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return packages;
+    return packages.filter((item) => {
+      const haystack = [item.name, item.packageId, item.category, item.description]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [packages, searchInput]);
 
   const renderPackageCard = (item: CatalogListItem) => {
     return (
@@ -155,12 +128,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         <div className="space-y-1.5 border border-line rounded-md bg-fog px-3 py-2.5">
-          {item.examId && (
-            <p className="flex items-center gap-2 text-xs text-muted">
-              <CheckCircle2 className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-              Exam ID: <span className="font-mono font-semibold text-ink">{item.examId}</span>
-            </p>
-          )}
           {item.courseName && (
             <p className="flex items-center gap-2 text-xs text-muted">
               <CheckCircle2 className="h-3.5 w-3.5 text-brand-600 shrink-0" />
@@ -182,10 +149,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     );
   };
 
-  // Note: exam- and course-only cards were removed from this dashboard —
-  // only packages are purchasable here. Exam and course items still exist in
-  // the catalog for internal lookups (e.g. the exam-ID box below), but are
-  // never rendered as standalone, individually-payable cards.
+  // Note: exam- and course-only cards are not shown on this dashboard.
+  // Candidates browse and start from package cards only.
 
   return (
     <div
@@ -230,10 +195,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <button
               type="button"
               onClick={() => heroRef.current?.scrollIntoView({ behavior: 'smooth' })}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-md cursor-pointer"
+              className="px-3 py-1.5 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-md cursor-pointer"
             >
-              <KeyRound className="h-3.5 w-3.5" />
-              Enter Exam ID
+              Browse Packages
             </button>
             {onGoToProfile && (
               <button
@@ -358,29 +322,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             certificate.
           </p>
 
-          <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-3">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/90">
-              <KeyRound className="h-4 w-4" />
-              Assigned an Exam ID in your recruitment email?
+          <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/90">Looking for your package?</p>
+            <p className="text-xs text-white/85 leading-relaxed">
+              Use your Package ID from your recruitment email in the live search below to instantly filter and open your
+              package.
             </p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                value={examIdInput}
-                onChange={(e) => setExamIdInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleVerifyExamId()}
-                placeholder="e.g. ATESTA-EX-9041"
-                className="flex-1 px-4 py-2.5 bg-white/95 text-ink placeholder:text-muted rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-white"
-              />
-              <button
-                type="button"
-                onClick={handleVerifyExamId}
-                className="px-5 py-2.5 bg-ink hover:bg-black text-white text-sm font-bold rounded-md cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                Verify &amp; Launch Exam
-              </button>
-            </div>
-            {examIdError && <p className="text-xs text-amber-100">{examIdError}</p>}
           </div>
         </div>
 
@@ -412,7 +359,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by name, category, or exam ID…"
+              placeholder="Search by package name, category, or package ID…"
               className="w-full pl-9 pr-3 py-2 bg-white border border-line rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             />
           </div>
@@ -422,7 +369,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {loading ? (
           <div className="py-16 text-center text-sm text-muted">Loading the catalog…</div>
-        ) : packages.length === 0 ? (
+        ) : filteredPackages.length === 0 ? (
           <div className="py-16 text-center text-sm text-muted">
             No packages match your search yet.
           </div>
@@ -438,7 +385,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   Career Advancement and Professional Development
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{packages.map(renderPackageCard)}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{filteredPackages.map(renderPackageCard)}</div>
             </section>
           </div>
         )}
