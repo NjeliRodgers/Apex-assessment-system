@@ -330,7 +330,7 @@ export const CatalogItemDetailPage: React.FC<CatalogItemDetailPageProps> = ({
             )}
 
             <p className="text-[11px] text-muted text-center">
-              Payments are processed securely by Paystack. Your card or mobile money details are never seen by Apex.
+              Payments are processed securely by Paystack. Your card or mobile money details are never seen by Atesta.
             </p>
           </div>
         </div>

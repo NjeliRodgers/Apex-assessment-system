@@ -147,7 +147,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         <div className="space-y-1">
-          <h3 className="font-display font-bold text-sm text-ink leading-snug">{item.name}</h3>
+          <h3 className="font-display font-bold text-sm text-ink leading-snug">
+            {item.name}
+            {item.packageId && <span className="text-ink"> - {item.packageId}</span>}
+          </h3>
           {item.description && <p className="text-xs text-muted leading-relaxed line-clamp-2">{item.description}</p>}
         </div>
 
@@ -155,13 +158,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           {item.examId && (
             <p className="flex items-center gap-2 text-xs text-muted">
               <CheckCircle2 className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-              Includes Full Exam ID: <span className="font-mono font-semibold text-ink">{item.examId}</span>
+              Exam ID: <span className="font-mono font-semibold text-ink">{item.examId}</span>
             </p>
           )}
           {item.courseName && (
             <p className="flex items-center gap-2 text-xs text-muted">
               <CheckCircle2 className="h-3.5 w-3.5 text-brand-600 shrink-0" />
-              Includes Short Training Course: <span className="font-semibold text-ink">{item.courseName}</span>
+              Training Course: <span className="font-semibold text-ink">{item.courseName}</span>
             </p>
           )}
         </div>
@@ -201,7 +204,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div className="leading-tight">
               <p className="font-display font-bold text-sm text-ink">
-                APEX <span className="text-brand-600">ASSESSMENT</span>
+                ATESTA <span className="text-brand-600">ASSESSMENT</span>
               </p>
               <p className="font-mono text-[10px] tracking-[0.1em] text-muted uppercase">
                 International Examination Standard
@@ -344,14 +347,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         >
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-[11px] font-semibold uppercase tracking-wide">
             <Sparkles className="h-3.5 w-3.5" />
-            Apex International Assessment Dashboard
+            Atesta International Assessment Dashboard
           </span>
           <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">
             Standardized Testing, Master Courses &amp; Combined Certification Packages
           </h1>
           <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
             Welcome, {candidateName.split(' ')[0]}. Take assigned or public exams, complete specialized short
-            courses, or pursue combined packages to receive an official downloadable Apex Assessment PDF
+            courses, or pursue combined packages to receive an official downloadable Atesta Assessment PDF
             certificate.
           </p>
 
@@ -366,7 +369,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 value={examIdInput}
                 onChange={(e) => setExamIdInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleVerifyExamId()}
-                placeholder="e.g. APEX-EX-9041"
+                placeholder="e.g. ATESTA-EX-9041"
                 className="flex-1 px-4 py-2.5 bg-white/95 text-ink placeholder:text-muted rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-white"
               />
               <button

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useApexAuth } from '../auth/ApexAuthContext';
 import { AuthCard } from '../components/AuthCard';
-import { User, Mail, Lock, CheckCircle2 } from 'lucide-react';
+import { User, Mail, CheckCircle2 } from 'lucide-react';
+import { PasswordInput } from '../components/PasswordInput';
+import { isValidEmail, EMAIL_ERROR_MESSAGE } from '../utils/validators';
 
 interface SignupPageProps {
   applicationId: string | null;
@@ -21,6 +23,10 @@ export const SignupPage: React.FC<SignupPageProps> = ({ applicationId, onGoToLog
     e.preventDefault();
     setError('');
 
+    if (!isValidEmail(email)) {
+      setError(EMAIL_ERROR_MESSAGE);
+      return;
+    }
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
       return;
@@ -57,8 +63,8 @@ export const SignupPage: React.FC<SignupPageProps> = ({ applicationId, onGoToLog
   return (
     <AuthCard
       eyebrow="New Candidate Enrollment"
-      title="Create Your Apex Account"
-      subtitle="Register to take Apex exams, courses, or packages — no prior application needed."
+      title="Create Your Atesta Account"
+      subtitle="Register to take Atesta exams, courses, or packages — no prior application needed."
       footer={
         <p className="text-center text-xs text-muted">
           Already have an account?{' '}
@@ -101,18 +107,13 @@ export const SignupPage: React.FC<SignupPageProps> = ({ applicationId, onGoToLog
 
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">Password</label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="w-full pl-9 pr-3 py-2 bg-fog border border-line rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:bg-white"
-              placeholder="At least 8 characters"
-            />
-          </div>
+          <PasswordInput
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            placeholder="At least 8 characters"
+          />
         </div>
 
         <button

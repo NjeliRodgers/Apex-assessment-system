@@ -121,7 +121,7 @@ export const PaymentGatePage: React.FC<PaymentGatePageProps> = ({
 
           <p className="text-[11px] text-muted">
             Payments are processed securely by Paystack. Your card or mobile money details are never seen by Global
-            Talent Plus or Apex.
+            Talent Plus or Atesta.
           </p>
         </div>
       </div>

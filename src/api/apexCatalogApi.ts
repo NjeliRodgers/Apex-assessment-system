@@ -9,6 +9,7 @@ export type CatalogItemType = 'exam' | 'course' | 'package';
 export interface CatalogListItem {
   type: CatalogItemType;
   id: string;
+  packageId?: string | null;
   name: string;
   description?: string | null;
   category?: string | null;

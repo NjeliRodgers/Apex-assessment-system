@@ -8,7 +8,7 @@ const GUIDELINES: string[] = [
   'Assessment and AI-interview payments are non-refundable once a session has started.',
   'Any impersonation, use of unauthorized aids, or dishonest conduct will result in disqualification.',
   'You will have a fixed time window to complete each stage once started.',
-  'Technical issues should be reported immediately through the Apex Assessment System support contact.'
+  'Technical issues should be reported immediately through the Atesta Assessment System support contact.'
 ];
 
 interface RulesRecapPageProps {
@@ -52,7 +52,7 @@ export const RulesRecapPage: React.FC<RulesRecapPageProps> = ({ onContinue }) =>
               <ShieldCheck className="h-6 w-6" />
             </div>
             <span className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase block">
-              Apex Assessment Process
+              Atesta Assessment Process
             </span>
             <h1 className="font-display text-2xl font-bold text-ink">
               Welcome, {candidate?.name?.split(' ')[0]}
@@ -105,8 +105,8 @@ export const RulesRecapPage: React.FC<RulesRecapPageProps> = ({ onContinue }) =>
           <div className="border border-line rounded-lg p-5 bg-fog space-y-3">
             <h2 className="font-display text-sm font-bold text-ink">What to expect</h2>
             <p className="text-xs text-muted leading-relaxed">
-              You will receive official instructions only when an action is ready for you. With apex assessments, you can complete your interview process from anywhere, at your own pace within given time. Apex Assessment provide equal opportunity to every candidate, regardless of race, gender, religion,
-              disability, or background. Kindly ensure you have a stable internet connection and a quiet environment before starting. Kindly note that all assessments and interviews must be completed individually, without external assistance. Any impersonation, use of unauthorized aids, or dishonest conduct will result in disqualification. Kindly read and agree to the rules, regulations, and terms & conditions of the Apex Assessment System interview process before proceeding. Apex assessment wish you the best of luck in your interview process and hope you have a positive experience with our platform.
+              You will receive official instructions only when an action is ready for you. With Atesta assessments, you can complete your interview process from anywhere, at your own pace within given time. Atesta Assessment provides equal opportunity to every candidate, regardless of race, gender, religion,
+              disability, or background. Kindly ensure you have a stable internet connection and a quiet environment before starting. Kindly note that all assessments and interviews must be completed individually, without external assistance. Any impersonation, use of unauthorized aids, or dishonest conduct will result in disqualification. Kindly read and agree to the rules, regulations, and terms & conditions of the Atesta Assessment System interview process before proceeding. Atesta assessment wishes you the best of luck in your interview process and hopes you have a positive experience with our platform.
             </p>
           </div>
 
@@ -122,7 +122,7 @@ export const RulesRecapPage: React.FC<RulesRecapPageProps> = ({ onContinue }) =>
               className="mt-0.5 h-4 w-4 rounded border-line text-brand-600 focus:ring-brand-500 cursor-pointer"
             />
             <span>
-              I have read and agree to the rules, regulations, and terms &amp; conditions of the Apex Assessment
+              I have read and agree to the rules, regulations, and terms &amp; conditions of the Atesta Assessment
               System interview process.
             </span>
           </label>

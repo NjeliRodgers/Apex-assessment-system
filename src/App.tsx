@@ -33,7 +33,7 @@ const AuthedGate: React.FC = () => {
   if (loadingProfile) {
     return (
       <div className="min-h-screen bg-fog flex items-center justify-center p-4">
-        <p className="text-sm text-muted">Loading your Apex profile…</p>
+        <p className="text-sm text-muted">Loading your Atesta profile…</p>
       </div>
     );
   }
@@ -42,7 +42,7 @@ const AuthedGate: React.FC = () => {
     return (
       <div className="min-h-screen bg-fog flex items-center justify-center p-4">
         <div className="max-w-md text-center space-y-3">
-          <p className="text-sm text-muted">We could not load your Apex account.</p>
+          <p className="text-sm text-muted">We could not load your Atesta account.</p>
           <button onClick={logout} className="text-xs font-semibold text-brand-700 hover:text-brand-800 cursor-pointer">
             Sign out
           </button>

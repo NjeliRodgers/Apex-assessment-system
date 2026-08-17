@@ -295,7 +295,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
             </div>
             <div className="leading-tight text-left">
               <p className="font-display font-bold text-sm text-ink">
-                APEX <span className="text-brand-600">ASSESSMENT</span>
+                ATESTA <span className="text-brand-600">ASSESSMENT</span>
               </p>
               <p className="font-mono text-[10px] tracking-[0.1em] text-muted uppercase group-hover:text-brand-600">
                 ← Back to Dashboard
@@ -416,14 +416,14 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         >
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-[11px] font-semibold uppercase tracking-wide">
             <Sparkles className="h-3.5 w-3.5" />
-            Apex International Assessment Dashboard
+            Atesta International Assessment Dashboard
           </span>
           <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">
             Standardized Testing, Master Courses &amp; Combined Certification Packages
           </h1>
           <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
             Welcome, {candidateName.split(' ')[0]}. Take assigned or public exams, complete specialized short
-            courses, or pursue combined packages to receive an official downloadable Apex Assessment PDF
+            courses, or pursue combined packages to receive an official downloadable Atesta Assessment PDF
             certificate.
           </p>
 
@@ -433,7 +433,10 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               <Layers className="h-3.5 w-3.5" />
               {pkg.category ? `${pkg.category} · ` : ''}Certification Package
             </p>
-            <h2 className="font-display text-lg font-bold">{pkg.name}</h2>
+            <h2 className="font-display text-lg font-bold">
+              {pkg.name}
+              {pkg.packageId && <span className="font-bold"> - {pkg.packageId}</span>}
+            </h2>
             {pkg.description && <p className="text-sm text-white/85 leading-relaxed">{pkg.description}</p>}
           </div>
 
@@ -447,7 +450,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 type="text"
                 value={examIdInput}
                 onChange={(e) => setExamIdInput(e.target.value)}
-                placeholder="e.g. APEX-EX-9041"
+                placeholder="e.g. ATESTA-EX-9041"
                 className="flex-1 px-4 py-2.5 bg-white/95 text-ink placeholder:text-muted rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-white"
               />
               <button
@@ -558,7 +561,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     {pkg.instructions?.whyStudyIt || `This package is built for candidates working toward standardized,
     verifiable proof of competence in this field the kind employers and
     recruiters can check independently. Pick the package that matches your
-    own profession or the role you're applying for. Every package on Apex is
+    own profession or the role you're applying for. Every package on Atesta is
     scoped to a specific professional track, so choose the one that reflects
     what you actually do or want to be assessed on.`}
   </p>
@@ -576,9 +579,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     ))
   ) : (
     <>
-      Apex study provide a structured learning path and career journey for every candidate,with a professional certificate designed to
+      Atesta study provides a structured learning path and career journey for every candidate, with a professional certificate designed to
       demonstrate your knowledge, skills, and readiness for your next career opportunity.
-      Apex provides standardized courses, examinations, and structured interview assessments
+      Atesta provides standardized courses, examinations, and structured interview assessments
       that help candidates prepare for the expectations of employers and recruitment firms
       connecting talent with local and international opportunities across Africa and beyond.
       <br /><br />
@@ -595,7 +598,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
       another person, manipulate an assessment, or provide false information may result in
       disqualification and the cancellation or withholding of certification.
       <br /><br />
-      Prepare thoroughly, take every stage seriously, and give your best effort. Your Apex
+      Prepare thoroughly, take every stage seriously, and give your best effort. Your Atesta
       credential represents an achievement you have earned and can carry with you throughout
       your professional journey. We wish you success as you prepare for your next career
       opportunity.
@@ -623,7 +626,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               <ShieldCheck className="h-4 w-4 text-brand-700 shrink-0 mt-0.5" />
               <p className="text-xs text-brand-800 leading-relaxed">
                 {pkg.instructions?.confidentialityNote || `Your information is kept confidential and secure. Exam answers, interview recordings, and personal
-                details are only used to assess and certify you, and are never shared outside the Apex and HR team during review
+                details are only used to assess and certify you, and are never shared outside the Atesta and HR team during review
                 process.`}
               </p>
             </div>
@@ -788,7 +791,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         )}
 
         <p className="text-[11px] text-muted text-center pb-4">
-          Payments are processed securely by Paystack. Your card or mobile money details are never seen by Apex.
+          Payments are processed securely by Paystack. Your card or mobile money details are never seen by Atesta.
         </p>
       </main>
 
