@@ -102,7 +102,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [packages, searchInput]);
 
   const renderPackageCard = (item: CatalogListItem) => {
-    const hasBreakdown = typeof item.examCostKsh === 'number' || typeof item.courseCostKsh === 'number';
     return (
       <div
         key={`package-${item.id}`}
@@ -131,26 +130,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         <div className="space-y-1.5 border border-line rounded-md bg-fog px-3 py-2.5">
-          <div className="flex items-end justify-between gap-3 border-b border-line pb-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Package Price</p>
-            <p className="font-display text-lg font-bold text-brand-700">{formatKsh(item.costKsh)}</p>
-          </div>
-
-          {hasBreakdown && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-[11px] text-muted">
-              {typeof item.examCostKsh === 'number' && (
-                <p>
-                  Exam: <span className="font-semibold text-ink">{formatKsh(item.examCostKsh)}</span>
-                </p>
-              )}
-              {typeof item.courseCostKsh === 'number' && (
-                <p>
-                  Course: <span className="font-semibold text-ink">{formatKsh(item.courseCostKsh)}</span>
-                </p>
-              )}
-            </div>
-          )}
-
           {item.courseName && (
             <p className="flex items-center gap-2 text-xs text-muted">
               <CheckCircle2 className="h-3.5 w-3.5 text-brand-600 shrink-0" />
