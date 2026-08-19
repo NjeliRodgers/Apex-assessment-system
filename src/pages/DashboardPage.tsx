@@ -30,6 +30,8 @@ const getInitials = (name: string) =>
     .map((p) => p[0]?.toUpperCase() || '')
     .join('') || '?';
 
+  const formatKsh = (amount: number) => `KSh ${amount.toLocaleString()}`;
+
 type TabKey = 'all' | 'package';
 
 const TAB_LABEL: Record<TabKey, string> = {
@@ -100,6 +102,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   }, [packages, searchInput]);
 
   const renderPackageCard = (item: CatalogListItem) => {
+    const hasBreakdown = typeof item.examCostKsh === 'number' || typeof item.courseCostKsh === 'number';
     return (
       <div
         key={`package-${item.id}`}
@@ -115,7 +118,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             )}
           </div>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border bg-amber-50 text-amber-700 border-amber-200">
-            Combined Bundle
+            Combined Bundle | {formatKsh(item.costKsh)}
           </span>
         </div>
 
@@ -128,6 +131,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         <div className="space-y-1.5 border border-line rounded-md bg-fog px-3 py-2.5">
+          <div className="flex items-end justify-between gap-3 border-b border-line pb-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Package Price</p>
+            <p className="font-display text-lg font-bold text-brand-700">{formatKsh(item.costKsh)}</p>
+          </div>
+
+          {hasBreakdown && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-[11px] text-muted">
+              {typeof item.examCostKsh === 'number' && (
+                <p>
+                  Exam: <span className="font-semibold text-ink">{formatKsh(item.examCostKsh)}</span>
+                </p>
+              )}
+              {typeof item.courseCostKsh === 'number' && (
+                <p>
+                  Course: <span className="font-semibold text-ink">{formatKsh(item.courseCostKsh)}</span>
+                </p>
+              )}
+            </div>
+          )}
+
           {item.courseName && (
             <p className="flex items-center gap-2 text-xs text-muted">
               <CheckCircle2 className="h-3.5 w-3.5 text-brand-600 shrink-0" />
@@ -314,11 +337,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             Atesta International Assessment Dashboard
           </span>
           <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">
-            Standardized Testing, Master Courses &amp; Combined Certification Packages
+            Standardized Testing, Master Courses &amp; Professionally Priced Certification Bundles
           </h1>
           <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
             Welcome, {candidateName.split(' ')[0]}. Take assigned or public exams, complete specialized short
-            courses, or pursue combined packages to receive an official downloadable Atesta Assessment PDF
+            courses, or pursue combined packages with clear package pricing to receive an official downloadable Atesta
+            Assessment PDF
             certificate.
           </p>
 
