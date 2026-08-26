@@ -4,10 +4,11 @@ import { BookOpen, CheckCircle2, Circle, LoaderCircle, Award, FileDown } from 'l
 
 interface CourseTakingPageProps {
   courseId: string;
+  packageId?: string;
   onBack: () => void;
 }
 
-export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, onBack }) => {
+export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, packageId, onBack }) => {
   const [courseName, setCourseName] = useState('');
   const [modules, setModules] = useState<ApexCourseModule[]>([]);
   const [completedModuleIds, setCompletedModuleIds] = useState<string[]>([]);
@@ -19,7 +20,7 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, on
   const loadCourse = () => {
     setLoading(true);
     setError('');
-    getMyCourseModulesApi(courseId)
+    getMyCourseModulesApi(courseId, packageId)
       .then((data) => {
         const sorted = [...data.modules].sort((a, b) => a.orderIndex - b.orderIndex);
         setCourseName(data.course.name);
@@ -34,7 +35,7 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, on
   useEffect(() => {
     loadCourse();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId]);
+  }, [courseId, packageId]);
 
   const activeModule = modules.find((m) => m.id === activeModuleId) || null;
   const allDone = modules.length > 0 && modules.every((m) => completedModuleIds.includes(m.id));
@@ -44,7 +45,7 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, on
     setMarking(true);
     setError('');
     try {
-      const progress = await markModuleCompleteApi(courseId, activeModule.id);
+      const progress = await markModuleCompleteApi(courseId, activeModule.id, packageId);
       setCompletedModuleIds(progress.completedModuleIds);
 
       const nextModule = modules.find((m) => !progress.completedModuleIds.includes(m.id));
@@ -82,8 +83,31 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, on
   }
 
   return (
-    <div className="min-h-screen bg-fog p-4 sm:p-8">
-      <main className="mx-auto max-w-4xl space-y-5">
+    <div
+      className="min-h-screen bg-fog p-4 sm:p-8"
+      style={{
+        backgroundImage: 'radial-gradient(circle at 1px 1px, #d7e6dc 1px, transparent 0)',
+        backgroundSize: '22px 22px'
+      }}
+    >
+      <main className="mx-auto max-w-6xl space-y-5">
+        <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-brand-700 cursor-pointer">
+          Back to package
+        </button>
+
+        <div className="rounded-xl bg-gradient-to-br from-brand-700 via-brand-600 to-mint-500 p-6 sm:p-10 text-white space-y-4 shadow-sm shadow-brand-900/20">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-[11px] font-semibold uppercase tracking-wide">
+            <BookOpen className="h-3.5 w-3.5" />
+            Atesta International Assessment Dashboard
+          </span>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">{courseName}</h1>
+          <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
+            By the end of this course you should understand every topic covered in the modules below, be able to
+            apply it to real scenarios in your field, and walk into your exam and international job screening
+            already speaking the employer's language.
+          </p>
+        </div>
+
         <header className="bg-white rounded-lg border border-line p-6 flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg bg-brand-700 text-white flex items-center justify-center shrink-0">
             <BookOpen className="h-5 w-5" />

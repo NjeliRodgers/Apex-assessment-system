@@ -259,9 +259,9 @@ export const CatalogItemDetailPage: React.FC<CatalogItemDetailPageProps> = ({
                 type="button"
                 onClick={handleEnrollAndPay}
                 disabled={processing}
-                className="w-full py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full max-w-xs mx-auto py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {processing ? 'Waiting for payment…' : `Enroll & Pay KSh ${item.costKsh.toLocaleString()}`}
+                {processing ? 'Processing…' : `Pay KSh ${item.costKsh.toLocaleString()}`}
               </button>
             )}
 
@@ -269,7 +269,7 @@ export const CatalogItemDetailPage: React.FC<CatalogItemDetailPageProps> = ({
               <button
                 type="button"
                 onClick={() => onStartExam(itemId)}
-                className="w-full py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer"
+                className="w-full max-w-xs mx-auto py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer"
               >
                 {isCompleted ? 'Review Exam' : 'Start Exam'}
               </button>
@@ -279,7 +279,7 @@ export const CatalogItemDetailPage: React.FC<CatalogItemDetailPageProps> = ({
               <button
                 type="button"
                 onClick={() => onGoToInterview(itemId, item.name)}
-                className="w-full py-3 bg-ink hover:bg-black text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer"
+                className="w-full max-w-xs mx-auto py-3 bg-ink hover:bg-black text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer"
               >
                 Continue to AI Interview
               </button>

@@ -1,21 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import {
   getMyInterviewAccessApi,
+  getMyPackageInterviewAccessApi,
   enrollApi,
   verifyEnrollmentPaymentApi,
   startMyInterviewApi,
+  startMyPackageInterviewApi,
   InterviewAccess
 } from '../api/apexCatalogApi';
-import { ArrowLeft, Bot, Lock, LoaderCircle, CheckCircle2, Hourglass } from 'lucide-react';
+import { ArrowLeft, Bot, Lock, LoaderCircle, CheckCircle2, Hourglass, Sparkles, Layers } from 'lucide-react';
 
 interface InterviewTakingPageProps {
-  examId: string;
-  examName: string;
+  // Can be a packageId (candidate came from a package's Module 4) or a bare
+  // examId (legacy/standalone exam that has its own interviewCostKsh set
+  // directly, outside any package). We don't know which up front — we
+  // detect it the same way the backend does: try package first, fall back
+  // to exam.
+  id: string;
+  name: string;
+  candidateName: string;
   candidateEmail: string;
   onBack: () => void;
 }
 
-export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId, examName, candidateEmail, onBack }) => {
+type InterviewScope = 'package' | 'exam';
+
+export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, name, candidateName, candidateEmail, onBack }) => {
+  const [scope, setScope] = useState<InterviewScope | null>(null);
   const [access, setAccess] = useState<InterviewAccess | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -25,8 +36,24 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
     setLoading(true);
     setError('');
     try {
-      const data = await getMyInterviewAccessApi(examId);
-      setAccess(data);
+      try {
+        // Try package-scoped access first — this is the normal path for
+        // candidates arriving from a package's AI-Agent Interview module.
+        const data = await getMyPackageInterviewAccessApi(id);
+        setScope('package');
+        setAccess(data);
+      } catch (packageErr: any) {
+        // Not a package id — fall back to the legacy standalone-exam path.
+        // Any other error (network, auth, etc.) should surface as-is rather
+        // than being swallowed by a silent fallback.
+        if (packageErr.message === 'Package not found') {
+          const data = await getMyInterviewAccessApi(id);
+          setScope('exam');
+          setAccess(data);
+        } else {
+          throw packageErr;
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load your interview status');
     } finally {
@@ -37,7 +64,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
   useEffect(() => {
     loadAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [examId]);
+  }, [id]);
 
   const handleEnrollAndPay = async () => {
     setError('');
@@ -53,7 +80,10 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
 
     setProcessing(true);
     try {
-      const { enrollment, costKsh } = await enrollApi('interview', examId);
+      // enrollApi('interview', id) already resolves package-vs-exam
+      // server-side, identically to the access lookup above — no branching
+      // needed here regardless of scope.
+      const { enrollment, costKsh } = await enrollApi('interview', id);
 
       if (enrollment.status === 'in_progress' || enrollment.status === 'completed') {
         await loadAccess();
@@ -69,7 +99,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
         amount: costKsh * 100,
         currency: 'KES',
         ref: reference,
-        metadata: { enrollmentId: enrollment.id, itemType: 'interview', itemId: examId },
+        metadata: { enrollmentId: enrollment.id, itemType: 'interview', itemId: id },
         callback: (response) => {
           verifyEnrollmentPaymentApi(enrollment.id, response.reference)
             .then(() => loadAccess())
@@ -95,7 +125,11 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
     setError('');
     setProcessing(true);
     try {
-      await startMyInterviewApi(examId);
+      if (scope === 'package') {
+        await startMyPackageInterviewApi(id);
+      } else {
+        await startMyInterviewApi(id);
+      }
       await loadAccess();
     } catch (err: any) {
       setError(err.message || 'Could not start your interview');
@@ -106,14 +140,14 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
 
   const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div className="min-h-screen bg-fog p-4 sm:p-8">
-      <main className="mx-auto max-w-2xl space-y-4">
+      <main className="mx-auto max-w-6xl space-y-4">
         <button
           type="button"
           onClick={onBack}
           className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-brand-700 cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to catalog
+          Back
         </button>
         {children}
       </main>
@@ -144,15 +178,42 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
   if (!access) return null;
 
   const header = (
-    <div className="bg-white rounded-lg border border-line p-6 sm:p-8 flex items-start gap-3">
-      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 text-white flex items-center justify-center shrink-0">
-        <Bot className="h-5 w-5" />
+    <>
+      <div className="rounded-xl bg-gradient-to-br from-brand-700 via-brand-600 to-mint-500 p-6 sm:p-10 text-white space-y-4 shadow-sm shadow-brand-900/20">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-[11px] font-semibold uppercase tracking-wide">
+          <Sparkles className="h-3.5 w-3.5" />
+          Atesta International Assessment Dashboard
+        </span>
+        <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">
+          Standardized Testing, Master Courses &amp; Combined Certification Packages
+        </h1>
+        <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
+          Welcome, {candidateName.split(' ')[0]}. The AI-agent interview is the final step in this package it
+           unlocks once every exam here is passed. It lets international employers see how you think and communicate under real conditions, not just what's on paper. Completing it well is what moves your profile into the shortlist hiring partners actually trust by receiving a congratulations Certificate.
+        </p>
+
+        <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-1.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/80">
+            <Layers className="h-3.5 w-3.5" />
+            Certification Package
+          </p>
+          <h2 className="font-display text-lg font-bold">International Job Screening</h2>
+        </div>
       </div>
-      <div>
-        <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">AI-Agent Interview</p>
-        <h1 className="font-display text-xl font-bold text-ink mt-1">{examName}</h1>
+
+      <div className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06),0_12px_28px_-10px_rgba(15,85,53,0.18)] overflow-hidden">
+        <div className="h-1 w-full bg-gradient-to-r from-brand-600 via-brand-500 to-mint-400" />
+        <div className="p-6 sm:p-8 flex items-start gap-3">
+          <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 text-white flex items-center justify-center shrink-0 shadow-sm shadow-brand-900/20">
+            <Bot className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">International Job Screening</p>
+            <h1 className="font-display text-xl font-bold text-ink mt-1">{name}</h1>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 
   if (access.pendingResultEmail) {
@@ -177,7 +238,11 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
         {header}
         <div className="bg-white rounded-lg border border-line p-6 text-center space-y-2">
           <p className="text-sm text-ink font-semibold">Not unlocked yet</p>
-          <p className="text-sm text-muted">You need to pass this exam before the AI interview stage becomes available.</p>
+          <p className="text-sm text-muted">
+            {scope === 'package'
+              ? 'Make sure you do and complete exams first.'
+              : 'Make sure you do and complete this exam first.'}
+          </p>
         </div>
       </Shell>
     );
@@ -188,7 +253,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
       <Shell>
         {header}
         <div className="bg-white rounded-lg border border-line p-6 text-center space-y-2">
-          <p className="text-sm text-muted">The AI interview stage isn't set up for this exam yet. Check back later.</p>
+          <p className="text-sm text-muted">The AI interview stage isn't set up for this yet. Check back later.</p>
         </div>
       </Shell>
     );
@@ -254,6 +319,34 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
 
       {!isPaidUp && (
         <>
+          <div className="border border-line rounded-lg p-5 bg-brand-50 space-y-2">
+            <h2 className="font-display text-sm font-bold text-ink">Why this interview matters</h2>
+            <p className="text-xs text-muted leading-relaxed">
+              The AI-agent interview is Atesta's final checkthe stage that lets international employers see how
+              you think and communicate under real conditions, not just what's on paper. Employers hiring across
+              borders can't sit in the room with every candidate, so they lean on this interview to confirm you're
+              genuinely ready to work and deliver on the responsibilities of the role from day one. Completing it
+              well is what moves your profile into the shortlist hiring partners actually trust by receiving a congratulations Certificate.
+            </p>
+          </div>
+
+                    <div className="border border-line rounded-lg p-5 bg-white space-y-3">
+            <h2 className="font-display text-sm font-bold text-ink">How to prepare for your International Job Screening</h2>
+            <ul className="text-xs text-muted space-y-1.5 list-disc list-inside leading-relaxed">
+              <li>Turn your camera on for the entire session — your video must stay on throughout.</li>
+              <li>Make sure you are clearly audible: use a quiet room and, if possible, headphones with a mic.</li>
+              <li>Use a stable internet connection and a fully charged device.</li>
+              <li>Dress and present yourself as you would for a real international employer interview.</li>
+              <li>Expect general questions (tell us about yourself, strengths/weaknesses, why this role) as well
+                  as questions specific to the profession this package certifies.</li>
+              <li>Answer in clear, complete sentences — the AI agent is assessing communication as well as content.</li>
+              <li>Sit somewhere private and free of interruptions or background noise.</li>
+              <li>Have any role-relevant experience or examples ready to reference — specific stories land better
+                  than generic answers.</li>
+              <li>Treat this exactly like a real interview with an international recruiter: your recording and
+                  performance are what hiring partners will see.</li>
+            </ul>
+          </div>
           <div className="bg-white rounded-lg border border-line px-5 py-4 flex items-center justify-between">
             <div>
               <p className="text-xs text-muted uppercase tracking-wide font-mono">Cost</p>
@@ -264,9 +357,9 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
             type="button"
             onClick={handleEnrollAndPay}
             disabled={processing}
-            className="w-full py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full max-w-xs mx-auto py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {processing ? 'Waiting for payment…' : `Enroll & Pay KSh ${(access.costKsh || 0).toLocaleString()}`}
+            {processing ? 'Waiting for payment…' : 'Start online screening'}
           </button>
         </>
       )}
@@ -278,7 +371,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ examId
           disabled={processing}
           className="w-full py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {processing ? 'Starting…' : 'Start AI Interview'}
+          {processing ? 'Starting…' : 'Start online screening'}
         </button>
       )}
     </Shell>

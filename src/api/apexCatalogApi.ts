@@ -48,6 +48,9 @@ export interface ApexPackageInstructions {
   whyCertificateMatters?: string;
   howToCompleteSteps?: string[];
   confidentialityNote?: string;
+  examIntro?: string;
+  courseIntro?: string;
+  interviewIntro?: string;
 }
 
 export interface CatalogItemDetail extends CatalogListItem {
@@ -55,6 +58,10 @@ export interface CatalogItemDetail extends CatalogListItem {
   modules?: { id: string; title: string; orderIndex: number }[];
   exam?: { id: string; name: string; costKsh: number } | null;
   course?: { id: string; name: string; costKsh: number } | null;
+  exams?: { id: string; name: string; costKsh: number; passMarkPercent?: number; timeLimitMinutes?: number }[];
+  courses?: { id: string; name: string; costKsh: number; durationDays?: number }[];
+  interviewCostKsh?: number | null;
+  interviewPassMarkPercent?: number | null;
   instructions?: ApexPackageInstructions | null;
 }
 
@@ -65,10 +72,6 @@ export async function getCatalogItemApi(type: CatalogItemType, id: string): Prom
   return data.item;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Enrollment (candidate — POST /apex/enroll, POST /apex/enroll/verify-payment,
-// GET /apex/my-enrollments)
-// ─────────────────────────────────────────────────────────────
 
 export type EnrollmentStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
 
@@ -77,6 +80,7 @@ export interface ApexEnrollment {
   candidateId: string;
   itemType: CatalogItemType | 'interview';
   itemId: string;
+  packageId?: string | null;
   status: EnrollmentStatus;
   amountPaidKsh: number | null;
   paymentRef: string | null;
@@ -92,13 +96,16 @@ export interface ApexEnrollment {
 
 export async function enrollApi(
   itemType: CatalogItemType | 'interview',
-  itemId: string
+  itemId: string,
+  packageId?: string
 ): Promise<{ enrollment: ApexEnrollment; costKsh: number }> {
   const res = await apiFetch('/apex/enroll', {
     method: 'POST',
     headers: jsonHeaders,
-    body: JSON.stringify({ itemType, itemId })
+    body: JSON.stringify({ itemType, itemId, packageId })
   });
+
+  
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Enrollment failed');
   return { enrollment: data.enrollment, costKsh: data.costKsh };
@@ -160,9 +167,22 @@ export async function startMyInterviewApi(examId: string): Promise<{ id: string;
   return data.session;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Course-taking (candidate — GET .../my-modules, POST .../complete)
-// ─────────────────────────────────────────────────────────────
+export async function getMyPackageInterviewAccessApi(packageId: string): Promise<InterviewAccess> {
+  const res = await apiFetch(`/apex/packages/${packageId}/interview/access`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load interview status');
+  return data;
+}
+
+export async function startMyPackageInterviewApi(packageId: string): Promise<{ id: string; status: string }> {
+  const res = await apiFetch(`/apex/packages/${packageId}/interview/start`, {
+    method: 'POST',
+    headers: jsonHeaders
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Could not start your interview');
+  return data.session;
+}
 
 export interface ApexCourseModule {
   id: string;
@@ -182,8 +202,9 @@ export interface MyCourseModulesResponse {
   completedModuleIds: string[];
 }
 
-export async function getMyCourseModulesApi(courseId: string): Promise<MyCourseModulesResponse> {
-  const res = await apiFetch(`/apex/courses/${courseId}/my-modules`);
+export async function getMyCourseModulesApi(courseId: string, packageId?: string): Promise<MyCourseModulesResponse> {
+  const qs = packageId ? `?packageId=${encodeURIComponent(packageId)}` : '';
+  const res = await apiFetch(`/apex/courses/${courseId}/my-modules${qs}`);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to load course content');
   return data;
@@ -191,9 +212,11 @@ export async function getMyCourseModulesApi(courseId: string): Promise<MyCourseM
 
 export async function markModuleCompleteApi(
   courseId: string,
-  moduleId: string
+  moduleId: string,
+  packageId?: string
 ): Promise<{ completedModuleIds: string[]; completedAt: string | null }> {
-  const res = await apiFetch(`/apex/courses/${courseId}/modules/${moduleId}/complete`, { method: 'POST' });
+  const qs = packageId ? `?packageId=${encodeURIComponent(packageId)}` : '';
+  const res = await apiFetch(`/apex/courses/${courseId}/modules/${moduleId}/complete${qs}`, { method: 'POST' });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to update your progress');
   return data.progress;
@@ -286,4 +309,27 @@ export async function acceptPackageTermsApi(packageId: string): Promise<PackageT
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to accept terms');
   return { accepted: data.accepted, acceptedAt: data.acceptedAt };
+}
+
+export const AFFILIATE_FIRMS = [
+  { id: 'global_talent_plus', name: 'Global Talent Plus' },
+  { id: 'diaspora_placement_agency', name: 'Diaspora Placement Agency' },
+  { id: 'vidaj_agencies', name: 'Vidaj Agencies' },
+  { id: 'summit_recruitment_search', name: 'Summit Recruitment & Search' },
+  { id: 'mibreters_recruitment_agency', name: 'Mibreters Recruitment Agency' }
+] as const;
+
+export async function redeemPackageCourseCodeApi(
+  packageId: string,
+  firmId: string,
+  code: string
+): Promise<{ unlockedCourseIds: string[] }> {
+  const res = await apiFetch(`/apex/packages/${packageId}/courses/redeem-code`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ firmId, code })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to redeem code');
+  return data;
 }
