@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useApexAuth } from '../auth/ApexAuthContext';
 import { AuthCard } from '../components/AuthCard';
-import { Mail } from 'lucide-react';
+import { Mail, IdCard } from 'lucide-react';
 import { PasswordInput } from '../components/PasswordInput';
+import { isValidNationalId, NATIONAL_ID_ERROR_MESSAGE } from '../utils/validators';
 
 interface LoginPageProps {
   onGoToSignup: () => void;
@@ -12,6 +13,7 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onGoToSignup, onGoToForgotPassword }) => {
   const { login } = useApexAuth();
   const [email, setEmail] = useState('');
+  const [nationalId, setNationalId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,9 +23,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToSignup, onGoToForgot
     e.preventDefault();
     setError('');
     setNeedsActivation(false);
+
+    if (!isValidNationalId(nationalId)) {
+      setError(NATIONAL_ID_ERROR_MESSAGE);
+      return;
+    }
+
     setLoading(true);
     try {
-      await login(email, password);
+      await login(nationalId, email, password);
     } catch (err: any) {
       if (err.code === 'ACCOUNT_NOT_ACTIVATED') {
         setNeedsActivation(true);
@@ -58,6 +66,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToSignup, onGoToForgot
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-ink mb-1">National ID Number</label>
+          <div className="relative">
+            <IdCard className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
+            <input
+              type="text"
+              inputMode="numeric"
+              value={nationalId}
+              onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
+              required
+              minLength={8}
+              placeholder=" "
+              className="w-full pl-9 pr-3 py-2 bg-fog border border-line rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:bg-white"
+            />
+          </div>
+        </div>
+
         <div>
           <label className="block text-xs font-semibold text-ink mb-1">Email Address</label>
           <div className="relative">

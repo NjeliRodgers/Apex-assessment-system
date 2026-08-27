@@ -11,8 +11,8 @@ interface ApexAuthContextValue {
   isAuthenticated: boolean;
   loadingProfile: boolean;
   loadingPaymentStatus: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signUp: (payload: { applicationId?: string | null; name: string; email: string; password: string }) => Promise<string>;
+  login: (nationalId: string, email: string, password: string) => Promise<void>;
+  signUp: (payload: { applicationId?: string | null; name: string; email: string; nationalId: string; password: string }) => Promise<string>;
   logout: () => void;
   acceptTerms: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -81,14 +81,14 @@ export const ApexAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidate?.termsAcceptedAt]);
 
-  const login = async (email: string, password: string) => {
-    const { candidate: loggedIn, token } = await apexLoginApi(email, password);
+  const login = async (nationalId: string, email: string, password: string) => {
+    const { candidate: loggedIn, token } = await apexLoginApi(nationalId, email, password);
     setStoredToken(token);
     setCandidate(loggedIn);
     await refreshProfile();
   };
 
-  const signUp = async (payload: { applicationId?: string | null; name: string; email: string; password: string }) => {
+  const signUp = async (payload: { applicationId?: string | null; name: string; email: string; nationalId: string; password: string }) => {
     const { message } = await apexSignUpApi(payload);
     return message;
   };

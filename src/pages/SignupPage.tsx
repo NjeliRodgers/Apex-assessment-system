@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { useApexAuth } from '../auth/ApexAuthContext';
 import { AuthCard } from '../components/AuthCard';
-import { User, Mail, CheckCircle2 } from 'lucide-react';
+import { User, Mail, IdCard, CheckCircle2 } from 'lucide-react';
 import { PasswordInput } from '../components/PasswordInput';
-import { isValidEmail, EMAIL_ERROR_MESSAGE } from '../utils/validators';
+import { isValidEmail, EMAIL_ERROR_MESSAGE, isValidNationalId, NATIONAL_ID_ERROR_MESSAGE } from '../utils/validators';
 
 interface SignupPageProps {
   applicationId: string | null;
   onGoToLogin: () => void;
 }
 
+
 export const SignupPage: React.FC<SignupPageProps> = ({ applicationId, onGoToLogin }) => {
   const { signUp } = useApexAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [nationalId, setNationalId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +29,10 @@ export const SignupPage: React.FC<SignupPageProps> = ({ applicationId, onGoToLog
       setError(EMAIL_ERROR_MESSAGE);
       return;
     }
+    if (!isValidNationalId(nationalId)) {
+      setError(NATIONAL_ID_ERROR_MESSAGE);
+      return;
+    }
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
       return;
@@ -34,7 +40,7 @@ export const SignupPage: React.FC<SignupPageProps> = ({ applicationId, onGoToLog
 
     setLoading(true);
     try {
-      const msg = await signUp({ applicationId, name, email, password });
+      const msg = await signUp({ applicationId, name, email, nationalId, password });
       setMessage(msg);
     } catch (err: any) {
       setError(err.message || 'Sign up failed');
@@ -100,6 +106,23 @@ export const SignupPage: React.FC<SignupPageProps> = ({ applicationId, onGoToLog
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              className="w-full pl-9 pr-3 py-2 bg-fog border border-line rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:bg-white"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-ink mb-1">National ID Number</label>
+          <div className="relative">
+            <IdCard className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
+            <input
+              type="text"
+              inputMode="numeric"
+              value={nationalId}
+              onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
+              required
+              minLength={8}
+              placeholder=" "
               className="w-full pl-9 pr-3 py-2 bg-fog border border-line rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 focus:bg-white"
             />
           </div>

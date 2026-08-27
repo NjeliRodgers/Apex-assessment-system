@@ -3,6 +3,7 @@ export interface ApexCandidate {
   applicationId: string;
   name: string;
   email: string;
+  nationalId: string;
   isActive: boolean;
   termsAcceptedAt?: string | null;
 }

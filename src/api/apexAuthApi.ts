@@ -1,11 +1,11 @@
 import { ApexCandidate, ApexApplicationRef } from '../types';
 import { apiFetch, jsonHeaders } from './client';
 
-export async function apexLoginApi(email: string, password: string): Promise<{ candidate: ApexCandidate; token: string }> {
+export async function apexLoginApi(nationalId: string, email: string, password: string): Promise<{ candidate: ApexCandidate; token: string }> {
   const res = await apiFetch('/apex/auth/login', {
     method: 'POST',
     headers: jsonHeaders,
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ nationalId, email, password })
   });
   const data = await res.json();
   if (!res.ok) {
@@ -20,6 +20,7 @@ export async function apexSignUpApi(payload: {
   applicationId?: string | null;
   name: string;
   email: string;
+  nationalId: string;
   password: string;
 }): Promise<{ candidate: ApexCandidate; message: string }> {
   const res = await apiFetch('/apex/auth/signup', {
