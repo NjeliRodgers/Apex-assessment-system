@@ -16,6 +16,35 @@ export async function apexLoginApi(nationalId: string, email: string, password: 
   return data;
 }
 
+export async function apexRequestNationalIdRecoveryApi(payload: {
+  email: string;
+  password: string;
+}): Promise<{ success: boolean; message: string }> {
+  const res = await apiFetch('/apex/auth/request-national-id-recovery', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to process this request');
+  return data;
+}
+
+export async function apexConfirmNationalIdRecoveryApi(payload: {
+  email: string;
+  token: string;
+  nationalId: string;
+}): Promise<{ success: boolean; message: string }> {
+  const res = await apiFetch('/apex/auth/confirm-national-id-recovery', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update your National ID');
+  return data;
+}
+
 export async function apexSignUpApi(payload: {
   applicationId?: string | null;
   name: string;

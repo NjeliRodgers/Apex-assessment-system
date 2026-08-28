@@ -2,7 +2,7 @@
   "name": "apex-frontend",
   "private": true,
   "version": "1.0.0",
-  "description": "Apex Assessment System - Candidate Assessment & AI Interview Platform (Frontend)",
+  "description": "Atesta Assessment System - Candidate Assessment & AI Interview Platform (Frontend)",
   "type": "module",
   "scripts": {
     "dev": "vite",

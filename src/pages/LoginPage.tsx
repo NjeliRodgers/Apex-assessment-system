@@ -8,9 +8,10 @@ import { isValidNationalId, NATIONAL_ID_ERROR_MESSAGE } from '../utils/validator
 interface LoginPageProps {
   onGoToSignup: () => void;
   onGoToForgotPassword: () => void;
+  onGoToRecoverNationalId: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onGoToSignup, onGoToForgotPassword }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onGoToSignup, onGoToForgotPassword, onGoToRecoverNationalId }) => {
   const { login } = useApexAuth();
   const [email, setEmail] = useState('');
   const [nationalId, setNationalId] = useState('');
@@ -67,7 +68,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToSignup, onGoToForgot
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-ink mb-1">National ID Number</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-semibold text-ink">National ID Number</label>
+            <button type="button" onClick={onGoToRecoverNationalId} className="text-xs font-semibold text-brand-700 hover:text-brand-800 cursor-pointer">
+              Recover National ID
+            </button>
+          </div>
           <div className="relative">
             <IdCard className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
             <input

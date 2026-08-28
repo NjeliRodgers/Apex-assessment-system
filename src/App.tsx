@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { ApexAuthProvider, useApexAuth } from './auth/ApexAuthContext';
 import { ActivateAccount } from './auth/ActivateAccount';
 import { ResetPasswordForm } from './auth/ResetPasswordForm';
+import { UpdateNationalIdForm } from './pages/UpdateNationalIdForm';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { RecoverNationalIdPage } from './pages/RecoverNationalIdPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CatalogItemDetailPage } from './pages/CatalogItemDetailPage';
 import { PackageDetailPage } from './pages/PackageDetailPage';
@@ -17,7 +19,7 @@ import { MyEnrollmentsPage } from './pages/MyEnrollmentsPage';
 import { MyCertificatesPage } from './pages/MyCertificatesPage';
 import { CatalogItemType } from './api/apexCatalogApi';
 
-type Screen = 'login' | 'signup' | 'forgot';
+type Screen = 'login' | 'signup' | 'forgot' | 'recover-national-id';
 
 type CandidateScreen =
   | { view: 'dashboard' }
@@ -218,7 +220,16 @@ const UnauthedRouter: React.FC<{ applicationId: string | null }> = ({ applicatio
   if (screen === 'forgot') {
     return <ForgotPasswordPage onGoToLogin={() => setScreen('login')} />;
   }
-  return <LoginPage onGoToSignup={() => setScreen('signup')} onGoToForgotPassword={() => setScreen('forgot')} />;
+  if (screen === 'recover-national-id') {
+    return <RecoverNationalIdPage onGoToLogin={() => setScreen('login')} />;
+  }
+  return (
+    <LoginPage
+      onGoToSignup={() => setScreen('signup')}
+      onGoToForgotPassword={() => setScreen('forgot')}
+      onGoToRecoverNationalId={() => setScreen('recover-national-id')}
+    />
+  );
 };
 
 const AppInner: React.FC<{ applicationId: string | null }> = ({ applicationId }) => {
@@ -232,6 +243,8 @@ export default function App() {
   const resetEmail = params.get('email');
   const activationToken = params.get('activationToken');
   const activationEmail = params.get('email');
+  const nationalIdRecoveryToken = params.get('nationalIdRecoveryToken');
+  const nationalIdRecoveryEmail = params.get('email');
   const applicationId = params.get('ref');
 
   const backToApp = () => {
@@ -244,6 +257,12 @@ export default function App() {
 
   if (activationToken && activationEmail) {
     return <ActivateAccount email={activationEmail} token={activationToken} onSuccess={backToApp} />;
+  }
+
+  if (nationalIdRecoveryToken && nationalIdRecoveryEmail) {
+    return (
+      <UpdateNationalIdForm email={nationalIdRecoveryEmail} token={nationalIdRecoveryToken} onSuccess={backToApp} />
+    );
   }
 
   return (
