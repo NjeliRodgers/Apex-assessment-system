@@ -311,6 +311,43 @@ export async function acceptPackageTermsApi(packageId: string): Promise<PackageT
   return { accepted: data.accepted, acceptedAt: data.acceptedAt };
 }
 
+export interface PackageProgressSummary {
+  packageId: string;
+  packageCode: string | null;
+  termsAccepted: boolean;
+  analyticsVisible: boolean;
+  overall: {
+    completionPercent: number;
+    completedSteps: number;
+    totalSteps: number;
+    nextAction: string;
+  };
+  courses: {
+    total: number;
+    unlocked: number;
+    completed: number;
+  };
+  exams: {
+    total: number;
+    paid: number;
+    passed: number;
+    pendingResultReview: number;
+  };
+  interview: {
+    required: boolean;
+    unlocked: boolean;
+    paid: boolean;
+    completed: boolean;
+  };
+}
+
+export async function getPackageProgressSummaryApi(packageId: string): Promise<PackageProgressSummary> {
+  const res = await apiFetch(`/apex/packages/${packageId}/progress-summary`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load package progression summary');
+  return data.summary as PackageProgressSummary;
+}
+
 export const AFFILIATE_FIRMS = [
   { id: 'global_talent_plus', name: 'Global Talent Plus' },
   { id: 'diaspora_placement_agency', name: 'Diaspora Placement Agency' },

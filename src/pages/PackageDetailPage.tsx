@@ -11,13 +11,18 @@ import {
   BookOpen,
   Bot,
   ShieldCheck,
-  Layers
+  Layers,
+  Lock,
+  BarChart3,
+  CheckCircle2
 } from 'lucide-react';
 import {
   getCatalogItemApi,
   CatalogItemDetail,
   getPackageTermsApi,
-  acceptPackageTermsApi
+  acceptPackageTermsApi,
+  getPackageProgressSummaryApi,
+  PackageProgressSummary
 } from '../api/apexCatalogApi';
 
 interface PackageDetailPageProps {
@@ -60,6 +65,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const [profileOpen, setProfileOpen] = useState(false);
   const [pkg, setPkg] = useState<CatalogItemDetail | null>(null);
   const [terms, setTerms] = useState<{ accepted: boolean; acceptedAt: string | null }>({ accepted: false, acceptedAt: null });
+  const [summary, setSummary] = useState<PackageProgressSummary | null>(null);
   const [checkboxChecked, setCheckboxChecked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -69,12 +75,14 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     setLoading(true);
     setError('');
     try {
-      const [detail, termsStatus] = await Promise.all([
+      const [detail, termsStatus, progression] = await Promise.all([
         getCatalogItemApi('package', packageId),
-        getPackageTermsApi(packageId)
+        getPackageTermsApi(packageId),
+        getPackageProgressSummaryApi(packageId)
       ]);
       setPkg(detail);
       setTerms(termsStatus);
+      setSummary(progression);
       setCheckboxChecked(termsStatus.accepted);
     } catch (err: any) {
       setError(err.message || 'Failed to load this package');
@@ -91,6 +99,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   // Auto-jump to the Exams page if the candidate arrived here by verifying
   // an Exam ID on the Dashboard.
   const didAutoJump = useRef(false);
+  const termsAccepted = summary?.termsAccepted || terms.accepted || checkboxChecked;
+  const modulesUnlocked = termsAccepted;
+
   useEffect(() => {
     if (didAutoJump.current) return;
     if (!pkg || !highlightExamId) return;
@@ -108,6 +119,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
       try {
         const updated = await acceptPackageTermsApi(packageId);
         setTerms(updated);
+        const refreshed = await getPackageProgressSummaryApi(packageId);
+        setSummary(refreshed);
       } catch (err: any) {
         setError(err.message || 'Failed to save your acceptance. Please try again.');
         setCheckboxChecked(false);
@@ -144,8 +157,45 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const hasCourses = courses.length > 0;
   const hasInterview = hasExams; // interview is gated by exams, so it only exists if exams exist
   const moduleCount = 1 + (hasExams ? 1 : 0) + (hasCourses ? 1 : 0) + (hasInterview ? 1 : 0);
-  const modulesUnlocked = true;
-  const allExamsPassed = hasExams && exams.every((e: any) => e.passed === true);
+  const allExamsPassed = hasExams && !!summary && summary.exams.passed === summary.exams.total;
+  const interviewUnlocked = !!summary?.interview.unlocked && modulesUnlocked;
+  const analyticsVisible = !!summary?.analyticsVisible;
+
+  const completionPercent = summary?.overall.completionPercent || 0;
+  const stepCards = [
+    {
+      id: 'read',
+      label: 'Read & Accept',
+      detail: 'Module 1 terms and guidance',
+      done: termsAccepted
+    },
+    {
+      id: 'course',
+      label: 'Course Training',
+      detail: hasCourses ? `${summary?.courses.completed || 0}/${summary?.courses.total || courses.length} completed` : 'Not required in this package',
+      done: !hasCourses || ((summary?.courses.completed || 0) >= (summary?.courses.total || 0))
+    },
+    {
+      id: 'exam',
+      label: 'Exams',
+      detail: hasExams ? `${summary?.exams.passed || 0}/${summary?.exams.total || exams.length} passed` : 'Not required in this package',
+      done: !hasExams || allExamsPassed
+    },
+    {
+      id: 'interview',
+      label: 'Job Screening',
+      detail: hasInterview
+        ? summary?.interview.completed
+          ? 'Completed'
+          : interviewUnlocked
+          ? 'Unlocked'
+          : 'Locked until all exams pass'
+        : 'Not required in this package',
+      done: !hasInterview || !!summary?.interview.completed
+    }
+  ];
+
+  const moduleLockMessage = 'Read Module 1 and accept the terms first to unlock the next modules.';
 
   return (
     <div
@@ -288,8 +338,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
             Package Learning and Assessment Journey
           </h1>
           <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
-            Welcome, {candidateName.split(' ')[0]}. Review Module 1 first, then proceed through the assigned course,
-            exams, and AI interview in order.
+            Welcome, {candidateName.split(' ')[0]}. This package follows a clear progression: accept Module 1 terms,
+            complete training, pass all assigned exams, then finish the international job screening interview.
           </p>
 
           <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-1.5">
@@ -309,6 +359,20 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
             {pkg.description && <p className="text-sm text-white/85 leading-relaxed">{pkg.description}</p>}
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {stepCards.map((step, index) => (
+              <div key={step.id} className="rounded-lg border border-white/25 bg-white/10 px-3.5 py-3">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step {index + 1}</p>
+                <p className="text-sm font-semibold text-white mt-0.5">{step.label}</p>
+                <p className="text-[11px] text-white/80 mt-1 leading-relaxed">{step.detail}</p>
+                <span className={`inline-flex items-center gap-1 mt-2 text-[11px] font-semibold ${step.done ? 'text-emerald-100' : 'text-amber-100'}`}>
+                  {step.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                  {step.done ? 'Completed' : 'Pending'}
+                </span>
+              </div>
+            ))}
+          </div>
+
           {hasExams && (
             <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-3">
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/90">
@@ -325,16 +389,18 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 />
                 <button
                   type="button"
+                  disabled={!modulesUnlocked}
                   onClick={() => {
                     if (exams.some((e) => e.id.toLowerCase() === examIdInput.trim().toLowerCase())) {
                       onGoToPackageExams();
                     }
                   }}
-                  className="px-5 py-2.5 bg-ink hover:bg-black text-white text-sm font-bold rounded-md cursor-pointer flex items-center justify-center gap-1.5"
+                  className="px-5 py-2.5 bg-ink hover:bg-black text-white text-sm font-bold rounded-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Verify &amp; Launch Exam
                 </button>
               </div>
+              {!modulesUnlocked && <p className="text-xs text-amber-100">{moduleLockMessage}</p>}
             </div>
           )}
         </div>
@@ -358,8 +424,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               {hasCourses && (
                 <button
                   type="button"
+                  disabled={!modulesUnlocked}
                   onClick={onGoToPackageCourse}
-                  className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer transition"
+                  className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Courses ({courses.length})
                 </button>
@@ -367,8 +434,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               {hasExams && (
                 <button
                   type="button"
+                  disabled={!modulesUnlocked}
                   onClick={onGoToPackageExams}
-                  className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer transition"
+                  className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   Exams ({exams.length})
                 </button>
@@ -376,15 +444,16 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               {hasInterview && (
                 <button
                   type="button"
-                  disabled={!modulesUnlocked || !allExamsPassed}
+                  disabled={!modulesUnlocked || !interviewUnlocked}
                   onClick={() => onGoToInterview(packageId, pkg.name)}
-                  title={!allExamsPassed ? 'Pass all exams in this package first' : undefined}
+                  title={!interviewUnlocked ? 'Pass all exams in this package first' : undefined}
                   className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   International Job Screening
                 </button>
               )}
             </div>
+            {!modulesUnlocked && <p className="text-xs text-amber-700">{moduleLockMessage}</p>}
           </div>
 
           {(hasExams || hasCourses) && (
@@ -393,8 +462,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 <button
                   key={exam.id}
                   type="button"
+                  disabled={!modulesUnlocked}
                   onClick={onGoToPackageExams}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-200 bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 hover:border-brand-300 cursor-pointer transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-200 bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 hover:border-brand-300 cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FileCheck2 className="h-3.5 w-3.5" />
                   {exam.name}
@@ -404,8 +474,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 <button
                   key={course.id}
                   type="button"
+                  disabled={!modulesUnlocked}
                   onClick={onGoToPackageCourse}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-200 bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 hover:border-brand-300 cursor-pointer transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-200 bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 hover:border-brand-300 cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <BookOpen className="h-3.5 w-3.5" />
                   {course.name}
@@ -489,6 +560,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 type="checkbox"
                 checked={checkboxChecked}
                 onChange={(e) => handleCheckboxChange(e.target.checked)}
+                disabled={termsAccepted}
                 className="mt-0.5 h-4 w-4 rounded border-line accent-brand-600 cursor-pointer"
               />
               <span>
@@ -496,7 +568,75 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 Conditions for this package.
               </span>
             </label>
+            {termsAccepted && (
+              <p className="text-xs text-brand-700">
+                Terms accepted. All unlocked modules now follow your payment and completion progression.
+              </p>
+            )}
           </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 sm:p-8 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-200 flex items-center justify-center shrink-0">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">Progress Analytics</p>
+              <h2 className="font-display text-lg font-bold text-ink">Training progression toward certification</h2>
+              <p className="text-xs text-muted mt-1">Analytics become visible after your first module payment or unlock action.</p>
+            </div>
+          </div>
+
+          {analyticsVisible && summary ? (
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-ink mb-1.5">
+                  <span>Overall completion</span>
+                  <span>{completionPercent}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-brand-600 to-mint-500" style={{ width: `${completionPercent}%` }} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-lg border border-line p-3 bg-fog">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Course</p>
+                  <p className="text-sm font-bold text-ink mt-1">{summary.courses.completed}/{summary.courses.total} completed</p>
+                  <p className="text-xs text-muted mt-1">Unlocked: {summary.courses.unlocked}</p>
+                </div>
+                <div className="rounded-lg border border-line p-3 bg-fog">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Exams</p>
+                  <p className="text-sm font-bold text-ink mt-1">{summary.exams.passed}/{summary.exams.total} passed</p>
+                  <p className="text-xs text-muted mt-1">Paid: {summary.exams.paid}</p>
+                </div>
+                <div className="rounded-lg border border-line p-3 bg-fog">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Interview</p>
+                  <p className="text-sm font-bold text-ink mt-1">{summary.interview.completed ? 'Completed' : summary.interview.unlocked ? 'Unlocked' : 'Locked'}</p>
+                  <p className="text-xs text-muted mt-1">{summary.interview.paid ? 'Paid' : 'Not yet paid'}</p>
+                </div>
+              </div>
+              <div className="rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-3 text-xs text-brand-900">
+                Next action: {summary.overall.nextAction}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-line bg-slate-50 p-4 relative overflow-hidden">
+              <div className="absolute inset-0 bg-white/65 backdrop-blur-[1px]" />
+              <div className="relative space-y-3">
+                <div className="h-2 rounded-full bg-slate-200" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="h-16 rounded-md bg-slate-200/80" />
+                  <div className="h-16 rounded-md bg-slate-200/80" />
+                  <div className="h-16 rounded-md bg-slate-200/80" />
+                </div>
+                <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5" />
+                  Analytics unlock after the first paid or redeemed training module.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Module directory: each item is its own page with its own payment ── */}
@@ -506,8 +646,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
           {hasExams && (
             <button
               type="button"
+              disabled={!modulesUnlocked}
               onClick={onGoToPackageExams}
-              className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 transition"
+              className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-200 flex items-center justify-center shrink-0">
@@ -518,6 +659,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                     Module 2 · {exams.length === 1 ? '1 exam' : `${exams.length} exams`}
                   </p>
                   <h2 className="font-display text-lg font-bold text-ink">Exams</h2>
+                  {!modulesUnlocked && <p className="text-xs text-muted mt-0.5">Locked until Module 1 is accepted.</p>}
                 </div>
               </div>
               <ChevronRight className="h-5 w-5 text-muted shrink-0" />
@@ -527,8 +669,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
           {hasCourses && (
             <button
               type="button"
+              disabled={!modulesUnlocked}
               onClick={onGoToPackageCourse}
-              className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 transition"
+              className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-200 flex items-center justify-center shrink-0">
@@ -539,6 +682,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                     Module 3 · {courses.length === 1 ? '1 course' : `${courses.length} courses`}
                   </p>
                   <h2 className="font-display text-lg font-bold text-ink">Course</h2>
+                  {!modulesUnlocked && <p className="text-xs text-muted mt-0.5">Locked until Module 1 is accepted.</p>}
                 </div>
               </div>
               <ChevronRight className="h-5 w-5 text-muted shrink-0" />
@@ -548,9 +692,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
           {hasInterview && (
             <button
               type="button"
-              disabled={!allExamsPassed}
+              disabled={!interviewUnlocked}
               onClick={() => onGoToInterview(packageId, pkg.name)}
-              title={!allExamsPassed ? 'Pass all exams in this package first' : undefined}
+              title={!interviewUnlocked ? 'Pass all exams in this package first' : undefined}
               className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <div className="flex items-center gap-3">
@@ -559,7 +703,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 </div>
                 <div>
                   <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">
-                    Module 4 · {allExamsPassed ? 'Unlocked' : 'Unlocks after all exams are passed'}
+                    Module 4 · {interviewUnlocked ? 'Unlocked' : 'Unlocks after all exams are passed'}
                   </p>
                   <h2 className="font-display text-lg font-bold text-ink">International Job Screening</h2>
                 </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileCheck2, Clock, ListChecks, CheckCircle2, XCircle, LoaderCircle, Sparkles, Layers } from 'lucide-react';
+import { FileCheck2, Clock, ListChecks, CheckCircle2, XCircle, LoaderCircle, Sparkles, Layers, BarChart3, Lock } from 'lucide-react';
 import {
   getCatalogItemApi,
   getMyEnrollmentsApi,
@@ -7,7 +7,9 @@ import {
   enrollApi,
   verifyEnrollmentPaymentApi,
   ApexEnrollment,
-  InterviewAccess
+  InterviewAccess,
+  getPackageProgressSummaryApi,
+  PackageProgressSummary
 } from '../api/apexCatalogApi';
 
 interface PackageExamsPageProps {
@@ -37,6 +39,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
   const [examIntro, setExamIntro] = useState<string | null>(null);
   const [exams, setExams] = useState<ExamRow[]>([]);
   const [examState, setExamState] = useState<Record<string, ExamState>>({});
+  const [summary, setSummary] = useState<PackageProgressSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [processingExamId, setProcessingExamId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -45,11 +48,15 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
     setLoading(true);
     setError('');
     try {
-      const pkg = await getCatalogItemApi('package', packageId);
+      const [pkg, progression] = await Promise.all([
+        getCatalogItemApi('package', packageId),
+        getPackageProgressSummaryApi(packageId)
+      ]);
       setPackageName(pkg.name);
       setExamIntro(pkg.instructions?.examIntro || null);
       const examList = pkg.exams || [];
       setExams(examList);
+      setSummary(progression);
 
       const [enrollments, accessResults] = await Promise.all([
         getMyEnrollmentsApi(),
@@ -112,9 +119,11 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
         metadata: { enrollmentId: pendingEnrollment.id, itemType: 'exam', itemId: exam.id, packageId },
         callback: (response) => {
           verifyEnrollmentPaymentApi(pendingEnrollment.id, response.reference)
-            .then((updated) =>
-              setExamState((prev) => ({ ...prev, [exam.id]: { ...prev[exam.id], enrollment: updated } }))
-            )
+            .then(async (updated) => {
+              setExamState((prev) => ({ ...prev, [exam.id]: { ...prev[exam.id], enrollment: updated } }));
+              const refreshed = await getPackageProgressSummaryApi(packageId);
+              setSummary(refreshed);
+            })
             .catch((err: any) => {
               setError(
                 err.message ||
@@ -132,6 +141,16 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
       setProcessingExamId(null);
     }
   };
+
+  const progressPercent = summary?.overall.completionPercent || 0;
+  const analyticsVisible = !!summary?.analyticsVisible;
+  const interviewStatus = !summary?.interview.required
+    ? 'Not required'
+    : summary.interview.completed
+    ? 'Completed'
+    : summary.interview.unlocked
+    ? 'Unlocked'
+    : 'Locked';
 
   if (loading) {
     return (
@@ -178,6 +197,85 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
             </p>
             <h2 className="font-display text-lg font-bold">{exams.length > 1 ? `${exams.length} Exams` : 'Exam'}</h2>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <div className="rounded-lg border border-white/25 bg-white/10 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 1</p>
+              <p className="text-sm font-semibold">Read & Accept</p>
+              <p className="text-[11px] text-white/80 mt-1">{summary?.termsAccepted ? 'Completed' : 'Pending'}</p>
+            </div>
+            <div className="rounded-lg border border-white/25 bg-white/10 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 2</p>
+              <p className="text-sm font-semibold">Course</p>
+              <p className="text-[11px] text-white/80 mt-1">{summary ? `${summary.courses.completed}/${summary.courses.total} completed` : 'Loading...'}</p>
+            </div>
+            <div className="rounded-lg border border-white/25 bg-white/15 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 3</p>
+              <p className="text-sm font-semibold">Exams (Current)</p>
+              <p className="text-[11px] text-white/80 mt-1">{summary ? `${summary.exams.passed}/${summary.exams.total} passed` : 'Loading...'}</p>
+            </div>
+            <div className="rounded-lg border border-white/25 bg-white/10 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 4</p>
+              <p className="text-sm font-semibold">Interview</p>
+              <p className="text-[11px] text-white/80 mt-1">{interviewStatus}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-200 flex items-center justify-center shrink-0">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">Exam Progress Board</p>
+              <h2 className="font-display text-lg font-bold text-ink">Certification progression</h2>
+            </div>
+          </div>
+
+          {analyticsVisible && summary ? (
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-ink mb-1.5">
+                  <span>Overall package completion</span>
+                  <span>{progressPercent}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-brand-600 to-mint-500" style={{ width: `${progressPercent}%` }} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-lg border border-line p-3 bg-fog">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Exam Access</p>
+                  <p className="text-sm font-bold text-ink mt-1">{summary.exams.paid}/{summary.exams.total} paid</p>
+                </div>
+                <div className="rounded-lg border border-line p-3 bg-fog">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Exam Results</p>
+                  <p className="text-sm font-bold text-ink mt-1">{summary.exams.passed}/{summary.exams.total} passed</p>
+                </div>
+                <div className="rounded-lg border border-line p-3 bg-fog">
+                  <p className="text-[11px] uppercase tracking-wide text-muted">Interview Unlock</p>
+                  <p className="text-sm font-bold text-ink mt-1">{summary.interview.unlocked ? 'Ready' : 'Pending'}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-line bg-slate-50 p-4 relative overflow-hidden">
+              <div className="absolute inset-0 bg-white/65 backdrop-blur-[1px]" />
+              <div className="relative space-y-3">
+                <div className="h-2 rounded-full bg-slate-200" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="h-14 rounded-md bg-slate-200/80" />
+                  <div className="h-14 rounded-md bg-slate-200/80" />
+                  <div className="h-14 rounded-md bg-slate-200/80" />
+                </div>
+                <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5" />
+                  Progress analytics appear after your first paid or redeemed module.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06),0_12px_28px_-10px_rgba(15,85,53,0.18)] overflow-hidden">

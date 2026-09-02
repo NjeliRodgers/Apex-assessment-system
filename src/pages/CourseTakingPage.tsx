@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getMyCourseModulesApi, markModuleCompleteApi, ApexCourseModule } from '../api/apexCatalogApi';
-import { BookOpen, CheckCircle2, Circle, LoaderCircle, Award, FileDown } from 'lucide-react';
+import { BookOpen, CheckCircle2, Circle, LoaderCircle, Award, FileDown, BarChart3 } from 'lucide-react';
 
 interface CourseTakingPageProps {
   courseId: string;
@@ -39,6 +39,7 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
 
   const activeModule = modules.find((m) => m.id === activeModuleId) || null;
   const allDone = modules.length > 0 && modules.every((m) => completedModuleIds.includes(m.id));
+  const completionPercent = modules.length > 0 ? Math.round((completedModuleIds.length / modules.length) * 100) : 0;
 
   const handleMarkComplete = async () => {
     if (!activeModule || marking) return;
@@ -106,6 +107,50 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
             apply it to real scenarios in your field, and walk into your exam and international job screening
             already speaking the employer's language.
           </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <div className="rounded-lg border border-white/25 bg-white/10 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 1</p>
+              <p className="text-sm font-semibold">Read & Accept</p>
+              <p className="text-[11px] text-white/80 mt-1">Completed</p>
+            </div>
+            <div className="rounded-lg border border-white/25 bg-white/15 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 2</p>
+              <p className="text-sm font-semibold">Course (Current)</p>
+              <p className="text-[11px] text-white/80 mt-1">{completedModuleIds.length}/{modules.length} modules</p>
+            </div>
+            <div className="rounded-lg border border-white/25 bg-white/10 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 3</p>
+              <p className="text-sm font-semibold">Exams</p>
+              <p className="text-[11px] text-white/80 mt-1">Unlock after training</p>
+            </div>
+            <div className="rounded-lg border border-white/25 bg-white/10 p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 4</p>
+              <p className="text-sm font-semibold">Interview</p>
+              <p className="text-[11px] text-white/80 mt-1">After exams pass</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border border-line p-5 sm:p-6 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-200 flex items-center justify-center shrink-0">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">Training Analytics</p>
+              <h2 className="font-display text-lg font-bold text-ink">Course completion progress</h2>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between text-xs font-semibold text-ink mb-1.5">
+              <span>Completed modules</span>
+              <span>{completionPercent}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-brand-600 to-mint-500" style={{ width: `${completionPercent}%` }} />
+            </div>
+          </div>
         </div>
 
         <header className="bg-white rounded-lg border border-line p-6 flex items-start gap-3">
