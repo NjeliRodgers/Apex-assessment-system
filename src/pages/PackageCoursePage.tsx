@@ -89,7 +89,7 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
 
     setPayingCourseId(course.id);
     try {
-      const { enrollment: pendingEnrollment, costKsh } = await enrollApi('course', course.id);
+      const { enrollment: pendingEnrollment, costKsh } = await enrollApi('course', course.id, packageId);
 
       if (pendingEnrollment.status === 'in_progress' || pendingEnrollment.status === 'completed') {
         setEnrollments((prev) => [...prev.filter((e) => e.id !== pendingEnrollment.id), pendingEnrollment]);
