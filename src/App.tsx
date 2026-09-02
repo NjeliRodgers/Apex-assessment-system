@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ApexAuthProvider, useApexAuth } from './auth/ApexAuthContext';
 import { ActivateAccount } from './auth/ActivateAccount';
 import { ResetPasswordForm } from './auth/ResetPasswordForm';
@@ -33,6 +33,38 @@ type CandidateScreen =
   | { view: 'certificates' };
 
 const SCREEN_STORAGE_KEY = 'apex_candidate_screen';
+const HISTORY_STATE_KEY = '__apexAssessmentRoute';
+
+type ScreenScope = 'authed' | 'unauthed';
+
+type StoredHistoryState<T> = {
+  scope: ScreenScope;
+  screen: T;
+};
+
+const readRouteState = <T,>(scope: ScreenScope): T | null => {
+  const state = window.history.state as { [HISTORY_STATE_KEY]?: StoredHistoryState<T> } | null;
+  if (!state || !state[HISTORY_STATE_KEY] || state[HISTORY_STATE_KEY]?.scope !== scope) {
+    return null;
+  }
+  return state[HISTORY_STATE_KEY]?.screen ?? null;
+};
+
+const writeRouteState = <T,>(scope: ScreenScope, screen: T, replace: boolean) => {
+  const nextState = {
+    ...(window.history.state ?? {}),
+    [HISTORY_STATE_KEY]: {
+      scope,
+      screen,
+    } as StoredHistoryState<T>,
+  };
+
+  if (replace) {
+    window.history.replaceState(nextState, '');
+  } else {
+    window.history.pushState(nextState, '');
+  }
+};
 
 const loadStoredScreen = (): CandidateScreen => {
   try {
@@ -46,7 +78,9 @@ const loadStoredScreen = (): CandidateScreen => {
 
 const AuthedGate: React.FC = () => {
   const { candidate, logout, loadingProfile } = useApexAuth();
-  const [screen, setScreen] = useState<CandidateScreen>(loadStoredScreen);
+  const [screen, setScreen] = useState<CandidateScreen>(() => readRouteState<CandidateScreen>('authed') ?? loadStoredScreen());
+  const handlingPopStateRef = useRef(false);
+  const lastScreenRef = useRef<string>(JSON.stringify(screen));
 
   useEffect(() => {
     try {
@@ -55,6 +89,43 @@ const AuthedGate: React.FC = () => {
       // storage unavailable — refresh will just fall back to dashboard, not a hard failure
     }
   }, [screen]);
+
+  useEffect(() => {
+    writeRouteState('authed', screen, true);
+    lastScreenRef.current = JSON.stringify(screen);
+  }, []);
+
+  useEffect(() => {
+    const serialized = JSON.stringify(screen);
+    if (serialized === lastScreenRef.current) {
+      return;
+    }
+
+    if (handlingPopStateRef.current) {
+      handlingPopStateRef.current = false;
+      lastScreenRef.current = serialized;
+      return;
+    }
+
+    writeRouteState('authed', screen, false);
+    lastScreenRef.current = serialized;
+  }, [screen]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const previousScreen = readRouteState<CandidateScreen>('authed');
+      if (!previousScreen) {
+        return;
+      }
+      handlingPopStateRef.current = true;
+      setScreen(previousScreen);
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, []);
 
   if (loadingProfile) {
     return (
@@ -212,7 +283,45 @@ const AuthedGate: React.FC = () => {
 };
 
 const UnauthedRouter: React.FC<{ applicationId: string | null }> = ({ applicationId }) => {
-  const [screen, setScreen] = useState<Screen>(applicationId ? 'signup' : 'login');
+  const [screen, setScreen] = useState<Screen>(() => readRouteState<Screen>('unauthed') ?? (applicationId ? 'signup' : 'login'));
+  const handlingPopStateRef = useRef(false);
+  const lastScreenRef = useRef<string>(screen);
+
+  useEffect(() => {
+    writeRouteState('unauthed', screen, true);
+    lastScreenRef.current = screen;
+  }, []);
+
+  useEffect(() => {
+    if (screen === lastScreenRef.current) {
+      return;
+    }
+
+    if (handlingPopStateRef.current) {
+      handlingPopStateRef.current = false;
+      lastScreenRef.current = screen;
+      return;
+    }
+
+    writeRouteState('unauthed', screen, false);
+    lastScreenRef.current = screen;
+  }, [screen]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const previousScreen = readRouteState<Screen>('unauthed');
+      if (!previousScreen) {
+        return;
+      }
+      handlingPopStateRef.current = true;
+      setScreen(previousScreen);
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, []);
 
   if (screen === 'signup') {
     return <SignupPage applicationId={applicationId} onGoToLogin={() => setScreen('login')} />;

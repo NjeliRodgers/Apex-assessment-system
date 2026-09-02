@@ -93,7 +93,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
 
     setProcessingExamId(exam.id);
     try {
-      const { enrollment: pendingEnrollment, costKsh } = await enrollApi('exam', exam.id);
+      const { enrollment: pendingEnrollment, costKsh } = await enrollApi('exam', exam.id, packageId);
 
       if (pendingEnrollment.status === 'in_progress' || pendingEnrollment.status === 'completed') {
         setExamState((prev) => ({ ...prev, [exam.id]: { ...prev[exam.id], enrollment: pendingEnrollment } }));

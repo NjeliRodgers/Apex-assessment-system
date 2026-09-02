@@ -144,7 +144,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const hasCourses = courses.length > 0;
   const hasInterview = hasExams; // interview is gated by exams, so it only exists if exams exist
   const moduleCount = 1 + (hasExams ? 1 : 0) + (hasCourses ? 1 : 0) + (hasInterview ? 1 : 0);
-  const modulesUnlocked = checkboxChecked;
+  const modulesUnlocked = true;
   const allExamsPassed = hasExams && exams.every((e: any) => e.passed === true);
 
   return (
@@ -354,9 +354,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               {hasCourses && (
                 <button
                   type="button"
-                  disabled={!modulesUnlocked}
                   onClick={onGoToPackageCourse}
-                  className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer transition"
                 >
                   Courses ({courses.length})
                 </button>
@@ -364,9 +363,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               {hasExams && (
                 <button
                   type="button"
-                  disabled={!modulesUnlocked}
                   onClick={onGoToPackageExams}
-                  className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 bg-ink hover:bg-ink/90 text-white text-xs sm:text-sm font-semibold rounded-md border border-black/10 shadow-sm shadow-black/10 cursor-pointer transition"
                 >
                   Exams ({exams.length})
                 </button>
@@ -391,9 +389,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 <button
                   key={exam.id}
                   type="button"
-                  disabled={!modulesUnlocked}
                   onClick={onGoToPackageExams}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-200 bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 hover:border-brand-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-200 bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 hover:border-brand-300 cursor-pointer transition"
                 >
                   <FileCheck2 className="h-3.5 w-3.5" />
                   {exam.name}
@@ -403,9 +400,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 <button
                   key={course.id}
                   type="button"
-                  disabled={!modulesUnlocked}
                   onClick={onGoToPackageCourse}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-200 bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 hover:border-brand-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-200 bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 hover:border-brand-300 cursor-pointer transition"
                 >
                   <BookOpen className="h-3.5 w-3.5" />
                   {course.name}
@@ -518,11 +514,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 Conditions for this package.
               </span>
             </label>
-            {!modulesUnlocked && (
-              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                Accept the terms above to open the Exams, Course, or AI-agent interview modules below.
-              </p>
-            )}
           </div>
         </div>
 
@@ -533,9 +524,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
           {hasExams && (
             <button
               type="button"
-              disabled={!modulesUnlocked}
               onClick={onGoToPackageExams}
-              className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 transition"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-200 flex items-center justify-center shrink-0">
@@ -555,9 +545,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
           {hasCourses && (
             <button
               type="button"
-              disabled={!modulesUnlocked}
               onClick={onGoToPackageCourse}
-              className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 transition"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-700 border border-brand-200 flex items-center justify-center shrink-0">
@@ -577,7 +566,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
           {hasInterview && (
             <button
               type="button"
-              disabled={!modulesUnlocked || !allExamsPassed}
+              disabled={!allExamsPassed}
               onClick={() => onGoToInterview(packageId, pkg.name)}
               title={!allExamsPassed ? 'Pass all exams in this package first' : undefined}
               className="w-full text-left bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 flex items-center justify-between gap-4 cursor-pointer hover:border-brand-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
