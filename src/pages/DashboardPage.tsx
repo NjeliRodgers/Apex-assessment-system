@@ -30,8 +30,6 @@ const getInitials = (name: string) =>
     .map((p) => p[0]?.toUpperCase() || '')
     .join('') || '?';
 
-  const formatKsh = (amount: number) => `KSh ${amount.toLocaleString()}`;
-
 type TabKey = 'all' | 'package';
 
 const TAB_LABEL: Record<TabKey, string> = {
@@ -117,7 +115,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             )}
           </div>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border bg-amber-50 text-amber-700 border-amber-200">
-            Combined Bundle | {formatKsh(item.costKsh)}
+            Certification Package
           </span>
         </div>
 
@@ -316,20 +314,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             Atesta International Assessment Dashboard
           </span>
           <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">
-            Standardized Testing, Master Courses &amp; Professionally Priced Certification Bundles
+            Standardized Testing, Skill Courses &amp; Certification Packages
           </h1>
           <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
-            Welcome, {candidateName.split(' ')[0]}. Take assigned or public exams, complete specialized short
-            courses, or pursue combined packages with clear package pricing to receive an official downloadable Atesta
-            Assessment PDF
-            certificate.
+            Welcome, {candidateName.split(' ')[0]}. Sign in, search your assigned package by its unique Package ID,
+            then complete the course, exams, and interview stages to qualify for your downloadable Atesta Assessment
+            PDF certificate.
           </p>
 
           <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-white/90">Looking for your package?</p>
             <p className="text-xs text-white/85 leading-relaxed">
-              Use your Package ID from your recruitment email in the live search below to instantly filter and open your
-              package.
+              Use the Package ID from your recruitment email to instantly find your package. Package IDs are unique,
+              so one search should take you straight to the correct package.
             </p>
           </div>
         </div>
@@ -362,7 +359,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by package name, category, or package ID…"
+              placeholder="Search by Package ID (recommended) or package name…"
               className="w-full pl-9 pr-3 py-2 bg-white border border-line rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             />
           </div>
@@ -382,10 +379,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <h2 className="flex items-center gap-2 font-display font-bold text-base text-ink">
                   <Layers className="h-5 w-5 text-amber-600" />
-                  Certification Packages (Exam + Course + AI Interview Combined)
+                  Certification Packages (Course + Exams + AI Interview)
                 </h2>
                 <span className="px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-semibold">
-                  Career Advancement and Professional Development
+                  Search by Package ID to start
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{filteredPackages.map(renderPackageCard)}</div>

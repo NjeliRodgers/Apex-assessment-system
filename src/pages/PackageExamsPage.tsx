@@ -164,10 +164,11 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
             Atesta International Dashboard
           </span>
           <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">
-            Standardized Testing, Master Courses &amp; Combined Certification Packages
+            Package Exam Stage
           </h1>
           <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
-            Welcome, {candidateName.split(' ')[0]}. {exams.length > 1 ? 'These exams are' : 'This exam is'} a professional examination, (Take it serious), it's Verified by International Job Boards and it defines those candidates who are ready for the next step in their career. From those who are just trying. {examIntro || 'Please complete all exams in this package to proceed with your certification program.'}
+            Welcome, {candidateName.split(' ')[0]}. Complete each assigned exam carefully and independently.
+            {examIntro || ' Passing all required exams unlocks the final interview stage for this package.'}
           </p>
 
           <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-1.5">
@@ -205,12 +206,8 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
             <div className="border border-line rounded-lg p-5 bg-brand-50 space-y-2">
               <h2 className="font-display text-sm font-bold text-ink">Why this exam matters</h2>
               <p className="text-xs text-muted leading-relaxed">
-                Atesta is an Examination and certification engine behind International Job placements. International employers can't
-                personally interview every applicant, so they rely on Atesta to independently verify that a
-                candidate has the real skills, discipline, and judgment the role demands before an offer is ever
-                made. Passing this exam tells employers you're not just claiming to be qualified; you've proven it
-                under the same standard used for candidates worldwide, which is exactly what lets hiring partners
-                move fast and trust the shortlist Atesta hands them.
+                Employers and recruiters use this exam stage to validate practical readiness under a consistent
+                standard. A pass result strengthens your profile for the next recruitment step.
               </p>
             </div>
 
@@ -277,7 +274,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
                           <li>Any violation of these rules may lead to disqualification of your attempt.</li>
                         </ul>
                         <p className="text-xs text-ink font-semibold pt-1">
-                          This exam requires payment of KSh {exam.costKsh.toLocaleString()}. Continue, and wish you all the best.
+                          This step requires secure payment before you begin. Continue when ready.
                         </p>
                       </div>
                     )}
@@ -315,8 +312,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
             </div>
 
             <p className="text-[11px] text-muted text-center">
-              Payments are processed securely by Paystack. Each exam is paid for separately — passing every exam listed
-              here unlocks the AI-agent interview.
+              Passing every listed exam unlocks the AI-agent interview for this package.
             </p>
           </div>
         </div>

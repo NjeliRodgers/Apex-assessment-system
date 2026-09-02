@@ -182,12 +182,11 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
             Atesta International Assessment Dashboard
           </span>
           <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">
-            Standardized Testing, Master Courses &amp; Combined Certification Packages
+            Package Course Stage
           </h1>
           <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
             Welcome, {candidateName.split(' ')[0]}. {courses.length > 1 ? 'These courses walk' : 'This course walks'} you
-            through everything you're expected to know ahead of your exam and interview, study it and then move on
-            when you're ready.
+            through the core knowledge required before your exams and interview. Study, complete the modules, then move on.
           </p>
 
           <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-1.5">
@@ -225,11 +224,8 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
             <div className="border border-line rounded-lg p-5 bg-brand-50 space-y-2">
               <h2 className="font-display text-sm font-bold text-ink">Why this course matters</h2>
               <p className="text-xs text-muted leading-relaxed">
-                This course exists because Atesta cares about candidates actually succeeding
-                once they're placed not just passing a one-off test. International employers trust this pathway
-                because it doesn't just check a box; it prepares you to walk into the role and deliver from day one.
-                Completing the course before your exam and interview means you show up already for the exam and Interview speaking the
-                employer's language exactly the kind of ready-to-work candidate Atesta is built to surface.
+                The course prepares you for real role tasks, not just test performance. Completing it helps you approach
+                exams and interviews with stronger practical context.
               </p>
             </div>
 

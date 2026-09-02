@@ -285,12 +285,11 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
             Atesta International Assessment Dashboard
           </span>
           <h1 className="font-display text-2xl sm:text-3xl font-bold leading-tight max-w-2xl">
-            Standardized Testing, Master Courses &amp; Combined Certification Packages
+            Package Learning and Assessment Journey
           </h1>
           <p className="text-sm text-white/85 max-w-2xl leading-relaxed">
-            Welcome, {candidateName.split(' ')[0]}. Each exam, the course, and the AI-agent interview in this
-            package are paid for independently — review the instructions below, then open each module when
-            you're ready.
+            Welcome, {candidateName.split(' ')[0]}. Review Module 1 first, then proceed through the assigned course,
+            exams, and AI interview in order.
           </p>
 
           <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-1.5">
@@ -302,6 +301,11 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               {pkg.name}
               {pkg.packageId && <span className="font-bold"> - {pkg.packageId}</span>}
             </h2>
+            {pkg.packageId && (
+              <p className="text-xs text-white/85 leading-relaxed">
+                Package ID {pkg.packageId} is your unique package reference from recruiter emails.
+              </p>
+            )}
             {pkg.description && <p className="text-sm text-white/85 leading-relaxed">{pkg.description}</p>}
           </div>
 
@@ -417,8 +421,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 <>
                   {pkg.name}{hasExams ? ` includes ${exams.length === 1 ? 'an exam' : `${exams.length} exams`}` : ''}
                   {hasCourses ? `, ${courses.length === 1 ? 'a short course' : `${courses.length} short courses`}` : ''}
-                  {hasInterview ? ', and a mandatory AI-agent interview' : ''}. Each exam, the course, and the
-                  interview are paid for independently — there is no single combined package payment.
+                  {hasInterview ? ', and a mandatory AI-agent interview' : ''}. Complete each assigned module to finish
+                  this package and move to certification review.
                 </>
               )}
             </p>
@@ -427,11 +431,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
               <p className="text-xs font-semibold text-ink uppercase tracking-wide">Why study it</p>
               <p className="text-sm text-muted leading-6">
                 {pkg.instructions?.whyStudyIt || `This package is built for candidates working toward standardized,
-                verifiable proof of competence in this field the kind employers and
-                recruiters can check independently. Pick the package that matches your
-                own profession or the role you're applying for. Every package on Atesta is
-                scoped to a specific professional track, so choose the one that reflects
-                what you actually do or want to be assessed on.`}
+                verifiable proof of competence for one clear career track. Follow this package to prepare for real
+                role expectations and show employers that your skills are assessed against a consistent standard.`}
               </p>
             </div>
 
@@ -447,29 +448,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 ))
               ) : (
                 <>
-                  Atesta study provides a structured learning path and career journey for every candidate, with a professional certificate designed to
-                  demonstrate your knowledge, skills, and readiness for your next career opportunity.
-                  Atesta provides standardized courses, examinations, and structured interview assessments
-                  that help candidates prepare for the expectations of employers and recruitment firms
-                  connecting talent with local and international opportunities across Africa and beyond.
-                  <br /><br />
-                  Once earned, your certificate belongs to you and can be shared with employers and
-                  recruitment firms. Each certificate includes a unique verification code and scannable
-                  verification feature, allowing its authenticity and achievement to be independently
-                  confirmed quickly and easily. This gives employers greater confidence in your
-                  qualifications and can support faster, more reliable candidate screening.
-                  <br /><br />
-                  We take assessment integrity seriously. Every candidate is expected to complete
-                  courses, examinations, and interview assessments honestly and independently. Candidates
-                  should ensure they have a reliable internet connection, a suitable device, and a
-                  quiet environment before beginning an assessment. Any attempt to cheat, impersonate
-                  another person, manipulate an assessment, or provide false information may result in
-                  disqualification and the cancellation or withholding of certification.
-                  <br /><br />
-                  Prepare thoroughly, take every stage seriously, and give your best effort. Your Atesta
-                  credential represents an achievement you have earned and can carry with you throughout
-                  your professional journey. We wish you success as you prepare for your next career
-                  opportunity.
+                  Your certificate confirms that you completed the required learning and assessment steps for this
+                  package. It includes a verification code that employers and recruiters can check quickly, helping
+                  them trust your profile and move your application forward faster.
                 </>
               )}
             </p>
@@ -481,10 +462,11 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                   pkg.instructions.howToCompleteSteps.map((step, i) => <li key={i}>{step}</li>)
                 ) : (
                   <>
-                    {hasCourses && <li>(Optional) Pay for or unlock the short course with an affiliate code, then study it.</li>}
-                    {hasExams && <li>Pay for and sit each exam assigned to this package, and reach the pass mark on all of them.</li>}
-                    {hasInterview && <li>Once every exam is passed, pay for and complete the AI-agent interview.</li>}
-                    <li>Once you have passed everything required, you are issued a Certificate of Completion by our HR team.</li>
+                    <li>Use your Package ID from your recruiter email to confirm you are in the correct package.</li>
+                    {hasCourses && <li>Complete the assigned course module{courses.length > 1 ? 's' : ''}.</li>}
+                    {hasExams && <li>Take and pass each assigned exam.</li>}
+                    {hasInterview && <li>Once exams are passed, complete the AI-agent interview.</li>}
+                    <li>After successful review, your certificate is issued and available for download.</li>
                   </>
                 )}
               </ol>
@@ -533,7 +515,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 </div>
                 <div>
                   <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">
-                    Module 2 · {exams.length === 1 ? '1 exam' : `${exams.length} exams`} · Paid independently
+                    Module 2 · {exams.length === 1 ? '1 exam' : `${exams.length} exams`}
                   </p>
                   <h2 className="font-display text-lg font-bold text-ink">Exams</h2>
                 </div>
@@ -554,7 +536,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 </div>
                 <div>
                   <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">
-                    Module 3 · {courses.length === 1 ? '1 course' : `${courses.length} courses`} · Pay or use an affiliate code
+                    Module 3 · {courses.length === 1 ? '1 course' : `${courses.length} courses`}
                   </p>
                   <h2 className="font-display text-lg font-bold text-ink">Course</h2>
                 </div>
@@ -577,7 +559,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 </div>
                 <div>
                   <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">
-                    Module 4 · {allExamsPassed ? 'Unlocked' : 'Unlocks after all exams are passed'} · Paid independently
+                    Module 4 · {allExamsPassed ? 'Unlocked' : 'Unlocks after all exams are passed'}
                   </p>
                   <h2 className="font-display text-lg font-bold text-ink">International Job Screening</h2>
                 </div>
@@ -588,7 +570,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         </div>
 
         <p className="text-[11px] text-muted text-center pb-4">
-          Payments are processed securely by Paystack. Your card or mobile money details are never seen by Atesta.
+          Module access and status updates are handled securely. Open each module above to continue your progression.
         </p>
       </main>
     </div>
