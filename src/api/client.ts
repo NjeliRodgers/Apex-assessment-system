@@ -24,7 +24,17 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  return fetch(url, { ...init, headers });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000); // 20s — mobile networks are slower
+
+  return fetch(url, { ...init, headers, signal: controller.signal })
+    .catch((err) => {
+      if (err.name === 'AbortError') {
+        throw new Error('The request timed out. Please check your internet connection and try again.');
+      }
+      throw new Error('Could not reach the server. Please check your internet connection and try again.');
+    })
+    .finally(() => clearTimeout(timeout));
 }
 
 export const jsonHeaders = { 'Content-Type': 'application/json' };
