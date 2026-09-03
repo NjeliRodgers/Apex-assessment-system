@@ -184,8 +184,8 @@ const AuthedGate: React.FC = () => {
             candidateEmail={candidate.email}
             candidateStatus={candidate.isActive ? 'Active' : 'Inactive'}
             onBack={goToDashboard}
-            onGoToPackageExams={() => setScreen({ view: 'packageExams', packageId: screen.itemId })}
-            onGoToPackageCourse={() => setScreen({ view: 'packageCourse', packageId: screen.itemId })}
+            onStartExam={(examId) => setScreen({ view: 'exam', examId, packageId: screen.itemId })}
+            onStartCourse={(courseId) => setScreen({ view: 'course', courseId, packageId: screen.itemId })}
             onGoToInterview={(id, name) => setScreen({ view: 'interview', interviewId: id, interviewName: name, packageId: screen.itemId })}
             onLogout={handleLogout}
             onGoToEnrollments={() => setScreen({ view: 'enrollments' })}
