@@ -184,15 +184,26 @@ export async function startMyPackageInterviewApi(packageId: string): Promise<{ i
   return data.session;
 }
 
+export interface ApexModuleQuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+}
+
 export interface ApexCourseModule {
   id: string;
   courseId: string;
   title: string;
   contentType: string;
-  content?: string;
+  contentBody?: string | null;
   contentUrl?: string;
   documentUrl?: string | null;
   documentName?: string | null;
+  summary?: string | null;
+  externalLink?: string | null;
+  externalLinkLabel?: string | null;
+  quiz?: ApexModuleQuizQuestion[] | null;
   orderIndex: number;
 }
 

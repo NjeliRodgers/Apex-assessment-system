@@ -1,18 +1,65 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getMyCourseModulesApi, markModuleCompleteApi, ApexCourseModule } from '../api/apexCatalogApi';
-import { BookOpen, CheckCircle2, Circle, LoaderCircle, Award, FileDown } from 'lucide-react';
+import {
+  BookOpen,
+  CheckCircle2,
+  HelpCircle,
+  LoaderCircle,
+  Award,
+  FileText,
+  Video,
+  Link2,
+  ChevronRight,
+  X,
+  Clock,
+  Sparkles,
+  Trophy
+} from 'lucide-react';
 
 interface CourseTakingPageProps {
   courseId: string;
   packageId?: string;
   onBack: () => void;
+  onGoToExam: () => void;
 }
 
-export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, packageId, onBack }) => {
+type Stage = 'notes' | 'summary' | 'quiz';
+
+const CHUNK_SIZE = 4;
+
+const splitParagraphs = (text: string): string[] =>
+  (text || '')
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+const chunkParagraphs = (arr: string[], size: number): string[][] => {
+  if (arr.length === 0) return [[]];
+  const out: string[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+};
+
+const estimateMinutes = (module: ApexCourseModule): number => {
+  const words = `${module.contentBody || ''} ${module.summary || ''}`.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(3, Math.round(words / 180));
+};
+
+const getYouTubeEmbedUrl = (url: string): string | null => {
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{6,})/);
+  return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+};
+
+export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, packageId, onBack, onGoToExam }) => {
   const [courseName, setCourseName] = useState('');
   const [modules, setModules] = useState<ApexCourseModule[]>([]);
   const [completedModuleIds, setCompletedModuleIds] = useState<string[]>([]);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [stage, setStage] = useState<Stage>('notes');
+  const [pageIndex, setPageIndex] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [resultPopup, setResultPopup] = useState<{ score: number; total: number; isLastModule: boolean } | null>(null);
+  const [showPdf, setShowPdf] = useState(false);
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
   const [error, setError] = useState('');
@@ -38,23 +85,90 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
   }, [courseId, packageId]);
 
   const activeModule = modules.find((m) => m.id === activeModuleId) || null;
+  const activeIndex = modules.findIndex((m) => m.id === activeModuleId);
   const allDone = modules.length > 0 && modules.every((m) => completedModuleIds.includes(m.id));
 
-  const handleMarkComplete = async () => {
+  const paragraphs = useMemo(() => (activeModule ? splitParagraphs(activeModule.contentBody || '') : []), [activeModule]);
+  const pages = useMemo(() => chunkParagraphs(paragraphs, CHUNK_SIZE), [paragraphs]);
+  const toc = useMemo(
+    () =>
+      paragraphs
+        .map((p, i) => ({ text: p.replace(/^##\s*/, ''), i, isHeading: p.startsWith('## ') }))
+        .filter((p) => p.isHeading)
+        .map((h) => ({ ...h, page: pages.findIndex((pg) => pg.includes(paragraphs[h.i])) })),
+    [paragraphs, pages]
+  );
+
+  const hasSummary = !!activeModule?.summary?.trim();
+  const hasQuiz = !!(activeModule?.quiz && activeModule.quiz.length > 0);
+  const isLastNotesPage = pageIndex >= pages.length - 1;
+
+  const selectModule = (moduleId: string) => {
+    setActiveModuleId(moduleId);
+    setStage('notes');
+    setPageIndex(0);
+    setQuizAnswers({});
+  };
+
+  const finishModule = async () => {
     if (!activeModule || marking) return;
     setMarking(true);
     setError('');
     try {
       const progress = await markModuleCompleteApi(courseId, activeModule.id, packageId);
       setCompletedModuleIds(progress.completedModuleIds);
-
-      const nextModule = modules.find((m) => !progress.completedModuleIds.includes(m.id));
-      if (nextModule) setActiveModuleId(nextModule.id);
     } catch (err: any) {
       setError(err.message || 'Could not update your progress.');
     } finally {
       setMarking(false);
     }
+  };
+
+  const handleSubmitQuiz = async () => {
+    if (!activeModule?.quiz) return;
+    let score = 0;
+    activeModule.quiz.forEach((q) => {
+      if (quizAnswers[q.id] === q.correctIndex) score += 1;
+    });
+    await finishModule();
+    setResultPopup({ score, total: activeModule.quiz.length, isLastModule: activeIndex === modules.length - 1 });
+  };
+
+  const handleContinueFromNotes = async () => {
+    if (!isLastNotesPage) {
+      setPageIndex((p) => p + 1);
+      return;
+    }
+    if (hasSummary) {
+      setStage('summary');
+      return;
+    }
+    if (hasQuiz) {
+      setStage('quiz');
+      return;
+    }
+    await finishModule();
+    setResultPopup({ score: 0, total: 0, isLastModule: activeIndex === modules.length - 1 });
+  };
+
+  const handleContinueFromSummary = async () => {
+    if (hasQuiz) {
+      setStage('quiz');
+      return;
+    }
+    await finishModule();
+    setResultPopup({ score: 0, total: 0, isLastModule: activeIndex === modules.length - 1 });
+  };
+
+  const closePopupAndAdvance = () => {
+    const wasLast = resultPopup?.isLastModule;
+    setResultPopup(null);
+    if (wasLast) {
+      onGoToExam();
+      return;
+    }
+    const next = modules[activeIndex + 1];
+    if (next) selectModule(next.id);
   };
 
   if (loading) {
@@ -108,16 +222,23 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
           </p>
         </div>
 
-        <header className="bg-white rounded-lg border border-line p-6 flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-brand-700 text-white flex items-center justify-center shrink-0">
-            <BookOpen className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">Course</p>
-            <h1 className="font-display text-xl font-bold text-ink mt-1">{courseName}</h1>
-            <p className="text-xs text-muted mt-1">
+        <header className="bg-white rounded-lg border border-line p-5 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-bold text-muted uppercase tracking-wide">Course Progress</p>
+            <p className="text-sm font-bold text-ink mt-0.5">
               {completedModuleIds.length} of {modules.length} modules completed
             </p>
+          </div>
+          <div className="flex items-center gap-2 w-40">
+            <div className="flex-1 h-1.5 bg-fog rounded-full overflow-hidden">
+              <div
+                className="h-full bg-brand-600"
+                style={{ width: `${modules.length ? Math.round((completedModuleIds.length / modules.length) * 100) : 0}%` }}
+              />
+            </div>
+            <span className="text-xs font-bold text-brand-700 shrink-0">
+              {modules.length ? Math.round((completedModuleIds.length / modules.length) * 100) : 0}%
+            </span>
           </div>
           {allDone && (
             <span className="flex items-center gap-1.5 text-sm font-semibold text-brand-700 shrink-0">
@@ -126,81 +247,301 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
           )}
         </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-5">
-          <nav className="bg-white rounded-lg border border-line p-3 space-y-1 h-fit">
+        {error && <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
+
+        <div className="grid grid-cols-1 sm:grid-cols-[260px_1fr] gap-5 items-start">
+          <nav className="bg-white rounded-lg border border-line p-3 space-y-1.5">
+            <p className="text-[11px] font-bold text-muted uppercase tracking-wide px-2 pb-1">
+              Modules &amp; Lessons ({modules.length})
+            </p>
             {modules.map((m, i) => {
               const isDone = completedModuleIds.includes(m.id);
               const isActive = m.id === activeModuleId;
+              const Icon = m.quiz && m.quiz.length > 0 ? HelpCircle : m.contentUrl ? Video : BookOpen;
               return (
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => setActiveModuleId(m.id)}
-                  className={`w-full text-left flex items-start gap-2 px-3 py-2 rounded-md text-xs font-semibold transition cursor-pointer ${
-                    isActive ? 'bg-brand-700 text-white' : 'text-ink hover:bg-fog'
+                  onClick={() => selectModule(m.id)}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                    isActive ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line text-ink hover:bg-fog'
                   }`}
                 >
-                  {isDone ? (
-                    <CheckCircle2 className={`h-4 w-4 shrink-0 mt-0.5 ${isActive ? 'text-white' : 'text-brand-600'}`} />
-                  ) : (
-                    <Circle className={`h-4 w-4 shrink-0 mt-0.5 ${isActive ? 'text-white/70' : 'text-muted'}`} />
-                  )}
-                  <span>
-                    {i + 1}. {m.title}
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-brand-700' : 'text-muted'}`} />
+                  <span className="flex-1">
+                    Module {i + 1}: {m.title}
                   </span>
+                  {isDone ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-600" />
+                  ) : (
+                    <span className="text-[10px] text-muted shrink-0">{estimateMinutes(m)}m</span>
+                  )}
                 </button>
               );
             })}
           </nav>
 
-          <section className="bg-white rounded-lg border border-line p-6 space-y-5">
+          <section className="bg-white rounded-lg border border-line overflow-hidden">
             {activeModule ? (
               <>
-                <h2 className="font-display font-bold text-lg text-ink">{activeModule.title}</h2>
-                <div className="text-sm text-ink/90 leading-relaxed whitespace-pre-wrap">
-                  {activeModule.content || 'No content has been added for this module yet.'}
+                <div className="px-6 py-4 border-b border-line flex items-center justify-between flex-wrap gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-brand-700">
+                    <Clock className="h-3.5 w-3.5" /> {estimateMinutes(activeModule)} MINUTES · {stage.toUpperCase()}
+                  </span>
+                  {completedModuleIds.includes(activeModule.id) && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-[11px] font-bold">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Completed
+                    </span>
+                  )}
                 </div>
 
-                {activeModule.documentUrl && (
-                  <a
-                    href={activeModule.documentUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-fog border border-line rounded-lg text-sm font-semibold text-brand-700 hover:border-brand-300 hover:bg-brand-50 transition"
-                  >
-                    <FileDown className="h-4 w-4" />
-                    Download study material{activeModule.documentName ? ` — ${activeModule.documentName}` : ' (PDF)'}
-                  </a>
+                {(activeModule.documentUrl || activeModule.externalLink) && (
+                  <div className="px-6 py-3 border-b border-line flex flex-wrap items-center gap-2">
+                    {activeModule.documentUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPdf(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-fog border border-line text-xs font-semibold text-brand-700 hover:border-brand-300 cursor-pointer"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> View study PDF
+                      </button>
+                    )}
+                    {activeModule.externalLink && (
+                      <a
+                        href={activeModule.externalLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-fog border border-line text-xs font-semibold text-brand-700 hover:border-brand-300"
+                      >
+                        <Link2 className="h-3.5 w-3.5" /> {activeModule.externalLinkLabel || 'External study material'}
+                      </a>
+                    )}
+                  </div>
                 )}
 
-                {error && <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
+                <div className="p-6 space-y-6">
+                  {toc.length > 0 && stage === 'notes' && (
+                    <div className="border border-line rounded-lg p-4 bg-fog/60">
+                      <p className="text-[11px] font-bold text-muted uppercase tracking-wide mb-2">Table of Contents</p>
+                      <div className="flex flex-wrap gap-2">
+                        {toc.map((h) => (
+                          <button
+                            key={h.i}
+                            type="button"
+                            onClick={() => setPageIndex(Math.max(0, h.page))}
+                            className="px-2.5 py-1 rounded-full bg-white border border-line text-[11px] font-semibold text-brand-700 hover:border-brand-300 cursor-pointer"
+                          >
+                            {h.text}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                <div className="pt-3 border-t border-line flex items-center justify-between">
-                  <button type="button" onClick={onBack} className="text-xs font-semibold text-muted hover:text-brand-700 cursor-pointer">
-                    Back to catalog
+                  <h2 className="font-display font-bold text-xl text-ink">{activeModule.title}</h2>
+
+                  {activeModule.contentUrl && stage === 'notes' && pageIndex === 0 && (
+                    getYouTubeEmbedUrl(activeModule.contentUrl) ? (
+                      <div className="aspect-video rounded-lg overflow-hidden border border-line">
+                        <iframe
+                          src={getYouTubeEmbedUrl(activeModule.contentUrl)!}
+                          title="Module video"
+                          className="w-full h-full"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : (
+                      <a
+                        href={activeModule.contentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline"
+                      >
+                        <Video className="h-4 w-4" /> Watch the module video
+                      </a>
+                    )
+                  )}
+
+                  {stage === 'notes' && (
+                    <div className="space-y-4">
+                      {(pages[pageIndex] || []).length === 0 && (
+                        <p className="text-sm text-muted">No notes have been added for this module yet.</p>
+                      )}
+                      {(pages[pageIndex] || []).map((p, idx) =>
+                        p.startsWith('## ') ? (
+                          <h3 key={idx} className="font-display font-bold text-base text-brand-800 pt-2">
+                            {p.replace(/^##\s*/, '')}
+                          </h3>
+                        ) : (
+                          <p key={idx} className="text-sm text-ink/90 leading-relaxed whitespace-pre-wrap">
+                            {p}
+                          </p>
+                        )
+                      )}
+                      {pages.length > 1 && (
+                        <p className="text-[11px] text-muted font-semibold">
+                          Page {pageIndex + 1} of {pages.length}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {stage === 'summary' && (
+                    <div className="border border-brand-200 bg-brand-50 rounded-lg p-5 space-y-3">
+                      <p className="flex items-center gap-1.5 text-xs font-bold text-brand-700 uppercase tracking-wide">
+                        <Sparkles className="h-3.5 w-3.5" /> Module Summary
+                      </p>
+                      {splitParagraphs(activeModule.summary || '').map((p, idx) => (
+                        <p key={idx} className="text-sm text-ink/90 leading-relaxed">
+                          {p}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  {stage === 'quiz' && activeModule.quiz && (
+                    <div className="space-y-5">
+                      <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase tracking-wide">
+                        <HelpCircle className="h-3.5 w-3.5" /> Check Your Understanding
+                      </p>
+                      {activeModule.quiz.map((q, qi) => (
+                        <div key={q.id} className="border border-line rounded-lg p-4 space-y-2">
+                          <p className="text-sm font-semibold text-ink">
+                            {qi + 1}. {q.question}
+                          </p>
+                          <div className="space-y-1.5">
+                            {q.options.map((opt, oi) => (
+                              <label
+                                key={oi}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm cursor-pointer ${
+                                  quizAnswers[q.id] === oi ? 'border-brand-600 bg-brand-50' : 'border-line hover:bg-fog'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={q.id}
+                                  checked={quizAnswers[q.id] === oi}
+                                  onChange={() => setQuizAnswers({ ...quizAnswers, [q.id]: oi })}
+                                />
+                                {opt}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="px-6 py-4 border-t border-line flex items-center justify-between bg-fog/40">
+                  <button
+                    type="button"
+                    onClick={() => (stage === 'notes' && pageIndex > 0 ? setPageIndex((p) => p - 1) : undefined)}
+                    disabled={stage !== 'notes' || pageIndex === 0}
+                    className="px-4 py-2 text-xs font-semibold text-muted hover:text-brand-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Previous
                   </button>
-                  {completedModuleIds.includes(activeModule.id) ? (
-                    <span className="flex items-center gap-1.5 text-sm font-semibold text-brand-700">
-                      <CheckCircle2 className="h-4 w-4" /> Completed
-                    </span>
-                  ) : (
+
+                  {stage === 'notes' && (
                     <button
                       type="button"
-                      onClick={handleMarkComplete}
+                      onClick={handleContinueFromNotes}
                       disabled={marking}
+                      className="px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg transition cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+                    >
+                      Continue <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
+                  {stage === 'summary' && (
+                    <button
+                      type="button"
+                      onClick={handleContinueFromSummary}
+                      disabled={marking}
+                      className="px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg transition cursor-pointer disabled:opacity-40 flex items-center gap-1.5"
+                    >
+                      {hasQuiz ? 'Continue to Quiz' : 'Finish Module'} <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
+                  {stage === 'quiz' && (
+                    <button
+                      type="button"
+                      onClick={handleSubmitQuiz}
+                      disabled={marking || Object.keys(quizAnswers).length < (activeModule.quiz?.length || 0)}
                       className="px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg transition cursor-pointer disabled:opacity-40"
                     >
-                      {marking ? 'Saving…' : 'Mark as complete'}
+                      Submit Quiz
                     </button>
                   )}
                 </div>
               </>
             ) : (
-              <p className="text-sm text-muted">This course has no modules yet.</p>
+              <p className="text-sm text-muted p-6">This course has no modules yet.</p>
             )}
           </section>
         </div>
       </main>
+
+      {showPdf && activeModule?.documentUrl && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+              <p className="text-sm font-bold text-ink">{activeModule.documentName || 'Study material'}</p>
+              <div className="flex items-center gap-3">
+                <a
+                  href={activeModule.documentUrl}
+                  download={activeModule.documentName || 'document.pdf'}
+                  className="text-xs font-semibold text-brand-700 hover:underline"
+                >
+                  Download
+                </a>
+                <button type="button" onClick={() => setShowPdf(false)} className="p-1 text-muted hover:text-ink cursor-pointer">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(activeModule.documentUrl)}&embedded=true`}
+              title="Study PDF"
+              className="flex-1 w-full"
+            />
+          </div>
+        </div>
+      )}
+
+      {resultPopup && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center mx-auto">
+              <Trophy className="h-7 w-7" />
+            </div>
+            <h3 className="font-display text-lg font-bold text-ink">Module complete!</h3>
+            {resultPopup.total > 0 ? (
+              <p className="text-sm text-muted">
+                You scored{' '}
+                <span className="font-bold text-brand-700">
+                  {resultPopup.score} / {resultPopup.total}
+                </span>{' '}
+                on this module's questions.
+              </p>
+            ) : (
+              <p className="text-sm text-muted">Nice work — you're ready for the next module.</p>
+            )}
+            {resultPopup.isLastModule && (
+              <p className="text-sm font-semibold text-brand-700">
+                You've successfully completed {courseName}. You can now continue to the exam.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={closePopupAndAdvance}
+              className="w-full py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg transition cursor-pointer"
+            >
+              {resultPopup.isLastModule ? 'Continue to Exam' : 'Continue to Next Module'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

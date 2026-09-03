@@ -260,6 +260,11 @@ const AuthedGate: React.FC = () => {
               ? () => setScreen({ view: 'detail', itemType: 'package', itemId: screen.packageId! })
               : goToDashboard
           }
+          onGoToExam={
+            screen.packageId
+              ? () => setScreen({ view: 'packageExams', packageId: screen.packageId! })
+              : goToDashboard
+          }
         />
       );
     case 'enrollments':
