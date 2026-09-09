@@ -101,6 +101,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const [redeemingCode, setRedeemingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [showStartTrainingModal, setShowStartTrainingModal] = useState(false);
+  const [selectedAccessMethod, setSelectedAccessMethod] = useState<'code' | 'pay' | null>(null);
   const [scrollRatio, setScrollRatio] = useState(0);
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
 
@@ -279,23 +280,20 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
 
   const handleRedeemCode = async () => {
     setCodeError('');
-    if (!firmId) {
-      setCodeError('Select the recruitment firm that gave you this code.');
-      return;
-    }
     if (!/^[A-Za-z0-9]{7}$/.test(code.trim())) {
       setCodeError('Codes are 7 characters. Confirm the code and try again.');
       return;
     }
     setRedeemingCode(true);
     try {
-      await redeemPackageCourseCodeApi(packageId, firmId, code.trim());
+      await redeemPackageCourseCodeApi(packageId, code.trim(), firmId || undefined);
       await refreshProgress();
       setShowStartTrainingModal(false);
+      setSelectedAccessMethod(null);
       setFirmId('');
       setCode('');
     } catch (err: any) {
-      setCodeError(err.message || 'This code is not valid for the selected firm.');
+      setCodeError(err.message || 'This code is not valid for this package.');
     } finally {
       setRedeemingCode(false);
     }
@@ -532,6 +530,29 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   ];
 
   const moduleLockMessage = 'Read Module 1 and accept the terms first to unlock the next modules.';
+
+  const openStartTrainingModal = () => {
+    setSelectedAccessMethod(null);
+    setCodeError('');
+    setShowStartTrainingModal(true);
+  };
+
+  const startCourseViaPayment = () => {
+    if (!modulesUnlocked) {
+      setActiveModule('instructions');
+      setShowStartTrainingModal(false);
+      return;
+    }
+
+    if (!primaryLockedCourse) {
+      launchTrainingNow();
+      return;
+    }
+
+    setShowStartTrainingModal(false);
+    setActiveModule('course');
+    void handlePayForCourse(primaryLockedCourse.id);
+  };
 
   return (
     <div
@@ -1139,7 +1160,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 px-3 w-full max-w-md">
           <button
             type="button"
-            onClick={() => setShowStartTrainingModal(true)}
+            onClick={openStartTrainingModal}
             className="w-full py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm shadow-[0_14px_34px_-16px_rgba(15,85,53,0.55)] border border-brand-800/40 transition cursor-pointer"
           >
             Start Training {'>>'}
@@ -1197,17 +1218,53 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
 
             <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-900 flex items-center gap-2">
               <CreditCard className="h-4 w-4 shrink-0" />
-              <span>Option 1: use your employer access code first. Option 2: pay to access if you do not have a valid code.</span>
+              <span>Select one access path first. The form below will switch to the option you choose.</span>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-ink block">Option 1 - Access Code from Employer</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAccessMethod('code');
+                  setCodeError('');
+                }}
+                className={`px-4 py-3 rounded-lg border text-left text-sm font-semibold cursor-pointer transition ${
+                  selectedAccessMethod === 'code'
+                    ? 'border-brand-600 bg-brand-50 text-brand-800'
+                    : 'border-line bg-white text-ink hover:border-brand-300'
+                }`}
+              >
+                Use Access Code
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAccessMethod('pay');
+                  setCodeError('');
+                }}
+                className={`px-4 py-3 rounded-lg border text-left text-sm font-semibold cursor-pointer transition ${
+                  selectedAccessMethod === 'pay'
+                    ? 'border-brand-600 bg-brand-50 text-brand-800'
+                    : 'border-line bg-white text-ink hover:border-brand-300'
+                }`}
+              >
+                Pay to Access
+              </button>
+            </div>
+
+            {selectedAccessMethod === null && (
+              <p className="text-xs text-muted">Choose one option above to continue.</p>
+            )}
+
+            {selectedAccessMethod === 'code' && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-ink block">Access Code from Employer</label>
               <select
                 value={firmId}
                 onChange={(e) => setFirmId(e.target.value)}
                 className="w-full px-3 py-2 border border-line rounded-lg text-sm"
               >
-                <option value="">Select recruitment firm</option>
+                <option value="">Select recruitment firm (optional)</option>
                 {AFFILIATE_FIRMS.map((firm) => (
                   <option key={firm.id} value={firm.id}>{firm.name}</option>
                 ))}
@@ -1225,9 +1282,26 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 onClick={handleRedeemCode}
                 className="w-full px-4 py-2 rounded-lg border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-800 text-sm font-semibold disabled:opacity-50"
               >
-                {redeemingCode ? 'Checking code...' : '1. Use Access Code to Unlock'}
+                {redeemingCode ? 'Checking code...' : 'Use Access Code to Unlock'}
               </button>
-            </div>
+              </div>
+            )}
+
+            {selectedAccessMethod === 'pay' && (
+              <div className="rounded-lg border border-line bg-fog p-4 space-y-3">
+                <p className="text-sm text-muted leading-relaxed">
+                  Continue with secure payment to unlock your course access immediately.
+                </p>
+                <button
+                  type="button"
+                  onClick={startCourseViaPayment}
+                  disabled={Boolean(payingCourseId)}
+                  className="w-full px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-bold cursor-pointer disabled:opacity-50"
+                >
+                  {payingCourseId ? 'Opening payment...' : primaryLockedCourse ? 'Pay to Access' : 'Start Training'}
+                </button>
+              </div>
+            )}
 
             <div className="pt-1 flex items-center justify-end gap-2">
               <button
@@ -1236,29 +1310,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 className="px-4 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:text-ink hover:bg-fog cursor-pointer"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!modulesUnlocked) {
-                    setActiveModule('instructions');
-                    setShowStartTrainingModal(false);
-                    return;
-                  }
-
-                  if (!primaryLockedCourse) {
-                    launchTrainingNow();
-                    return;
-                  }
-
-                  setShowStartTrainingModal(false);
-                  setActiveModule('course');
-                  void handlePayForCourse(primaryLockedCourse.id);
-                }}
-                disabled={Boolean(payingCourseId)}
-                className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
-              >
-                {payingCourseId ? 'Opening payment...' : primaryLockedCourse ? '2. Pay to Access' : 'Start Training'}
               </button>
             </div>
           </div>

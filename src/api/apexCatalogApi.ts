@@ -369,8 +369,8 @@ export const AFFILIATE_FIRMS = [
 
 export async function redeemPackageCourseCodeApi(
   packageId: string,
-  firmId: string,
-  code: string
+  code: string,
+  firmId?: string
 ): Promise<{ unlockedCourseIds: string[] }> {
   const res = await apiFetch(`/apex/packages/${packageId}/courses/redeem-code`, {
     method: 'POST',
