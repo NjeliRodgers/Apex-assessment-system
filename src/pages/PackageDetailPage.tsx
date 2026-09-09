@@ -1197,11 +1197,11 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
 
             <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-900 flex items-center gap-2">
               <CreditCard className="h-4 w-4 shrink-0" />
-              <span>Use Pay Now for secure checkout, or redeem your employer code to unlock training access.</span>
+              <span>Option 1: use your employer access code first. Option 2: pay to access if you do not have a valid code.</span>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-ink block">Access Code from Employer</label>
+              <label className="text-xs font-semibold text-ink block">Option 1 - Access Code from Employer</label>
               <select
                 value={firmId}
                 onChange={(e) => setFirmId(e.target.value)}
@@ -1225,7 +1225,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 onClick={handleRedeemCode}
                 className="w-full px-4 py-2 rounded-lg border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-800 text-sm font-semibold disabled:opacity-50"
               >
-                {redeemingCode ? 'Checking code...' : 'Use Access Code from Employer'}
+                {redeemingCode ? 'Checking code...' : '1. Use Access Code to Unlock'}
               </button>
             </div>
 
@@ -1258,7 +1258,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 disabled={Boolean(payingCourseId)}
                 className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
               >
-                {payingCourseId ? 'Opening payment...' : primaryLockedCourse ? 'Pay Now' : 'Start Training'}
+                {payingCourseId ? 'Opening payment...' : primaryLockedCourse ? '2. Pay to Access' : 'Start Training'}
               </button>
             </div>
           </div>

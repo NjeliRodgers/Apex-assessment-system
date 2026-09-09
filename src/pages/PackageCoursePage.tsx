@@ -44,7 +44,7 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [unlockMode, setUnlockMode] = useState<UnlockMode>(null);
+  const [unlockMode, setUnlockMode] = useState<UnlockMode>('code');
   const [payingCourseId, setPayingCourseId] = useState<string | null>(null);
   const [firmId, setFirmId] = useState('');
   const [code, setCode] = useState('');
@@ -384,21 +384,21 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setUnlockMode('pay')}
-                    className={`py-2.5 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer transition ${
-                      unlockMode === 'pay' ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line text-ink hover:bg-fog'
-                    }`}
-                  >
-                    <CreditCard className="h-4 w-4" /> Pay
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setUnlockMode('code')}
                     className={`py-2.5 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer transition ${
                       unlockMode === 'code' ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line text-ink hover:bg-fog'
                     }`}
                   >
-                    <KeyRound className="h-4 w-4" /> I have a code
+                    <KeyRound className="h-4 w-4" /> Use Code to Access
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUnlockMode('pay')}
+                    className={`py-2.5 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer transition ${
+                      unlockMode === 'pay' ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line text-ink hover:bg-fog'
+                    }`}
+                  >
+                    <CreditCard className="h-4 w-4" /> Pay to Access
                   </button>
                 </div>
 
