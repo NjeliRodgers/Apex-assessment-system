@@ -14,7 +14,8 @@ import {
   Clock,
   Sparkles,
   Trophy,
-  BarChart3
+  BarChart3,
+  ChevronDown
 } from 'lucide-react';
 
 interface CourseTakingPageProps {
@@ -64,6 +65,7 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
   const [error, setError] = useState('');
+  const [scrollRatio, setScrollRatio] = useState(0);
 
   const loadCourse = () => {
     setLoading(true);
@@ -85,6 +87,26 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, packageId]);
 
+  useEffect(() => {
+    const onScroll = () => {
+      const doc = document.documentElement;
+      const totalScrollable = doc.scrollHeight - window.innerHeight;
+      if (totalScrollable <= 0) {
+        setScrollRatio(0);
+        return;
+      }
+      setScrollRatio(Math.min(1, Math.max(0, window.scrollY / totalScrollable)));
+    };
+
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
   const activeModule = modules.find((m) => m.id === activeModuleId) || null;
   const activeIndex = modules.findIndex((m) => m.id === activeModuleId);
   const allDone = modules.length > 0 && modules.every((m) => completedModuleIds.includes(m.id));
@@ -104,6 +126,8 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
   const hasSummary = !!activeModule?.summary?.trim();
   const hasQuiz = !!(activeModule?.quiz && activeModule.quiz.length > 0);
   const isLastNotesPage = pageIndex >= pages.length - 1;
+  const showScrollDown = scrollRatio < 0.9;
+  const showBottomProgressAction = scrollRatio >= 0.74;
 
   const selectModule = (moduleId: string) => {
     setActiveModuleId(moduleId);
@@ -207,6 +231,16 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
       }}
     >
       <main className="mx-auto max-w-6xl space-y-5">
+        <div className="sticky top-3 z-10 bg-white/95 backdrop-blur rounded-lg border border-line px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between text-xs font-semibold text-ink mb-1.5">
+            <span>Package training progress</span>
+            <span>{completionPercent}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-brand-700 via-brand-600 to-mint-500" style={{ width: `${completionPercent}%` }} />
+          </div>
+        </div>
+
         <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-brand-700 cursor-pointer">
           Back to package
         </button>
@@ -527,6 +561,37 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
           </section>
         </div>
       </main>
+
+      {showScrollDown && (
+        <button
+          type="button"
+          onClick={() => window.scrollBy({ top: Math.round(window.innerHeight * 0.78), behavior: 'smooth' })}
+          className="fixed right-5 bottom-20 z-40 w-11 h-11 rounded-full bg-white border border-line text-brand-700 hover:text-brand-800 hover:border-brand-300 shadow-md flex items-center justify-center cursor-pointer"
+          aria-label="Scroll down"
+          title="Scroll down"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      )}
+
+      {showBottomProgressAction && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 px-3 w-full max-w-xl">
+          <div className="bg-white border border-line rounded-2xl shadow-[0_20px_45px_-24px_rgba(15,85,53,0.45)] px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted">
+              {allDone
+                ? 'Coursework complete. Continue to exams now.'
+                : 'Continue module reading and quizzes to unlock exams.'}
+            </p>
+            <button
+              type="button"
+              onClick={allDone ? onGoToExam : () => window.scrollBy({ top: Math.round(window.innerHeight * 0.72), behavior: 'smooth' })}
+              className="shrink-0 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+            >
+              {allDone ? 'Complete Coursework & Start Exam' : 'Continue Coursework'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {showPdf && activeModule?.documentUrl && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">

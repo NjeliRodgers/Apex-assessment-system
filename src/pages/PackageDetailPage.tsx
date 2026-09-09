@@ -14,7 +14,9 @@ import {
   Layers,
   Lock,
   BarChart3,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown,
+  CreditCard
 } from 'lucide-react';
 import {
   getCatalogItemApi,
@@ -50,8 +52,22 @@ interface PackageDetailPageProps {
   onGoToProfile?: () => void;
 }
 
+interface PaymentIntent {
+  type: 'exam';
+  id: string;
+  name: string;
+  amountKsh: number;
+}
+
 const getInitials = (name: string) =>
   name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('') || '?';
+
+const shortenWords = (text: string, maxWords: number) => {
+  const normalized = text.trim().replace(/\s+/g, ' ');
+  const words = normalized.split(' ');
+  if (words.length <= maxWords) return normalized;
+  return `${words.slice(0, maxWords).join(' ')}...`;
+};
 
 export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   packageId,
@@ -80,11 +96,13 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const [enrollments, setEnrollments] = useState<ApexEnrollment[]>([]);
   const [payingCourseId, setPayingCourseId] = useState<string | null>(null);
   const [processingExamId, setProcessingExamId] = useState<string | null>(null);
-  const [unlockMode, setUnlockMode] = useState<null | 'pay' | 'code'>(null);
   const [firmId, setFirmId] = useState('');
   const [code, setCode] = useState('');
   const [redeemingCode, setRedeemingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
+  const [showStartTrainingModal, setShowStartTrainingModal] = useState(false);
+  const [scrollRatio, setScrollRatio] = useState(0);
+  const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -112,6 +130,26 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageId]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const doc = document.documentElement;
+      const totalScrollable = doc.scrollHeight - window.innerHeight;
+      if (totalScrollable <= 0) {
+        setScrollRatio(0);
+        return;
+      }
+      setScrollRatio(Math.min(1, Math.max(0, window.scrollY / totalScrollable)));
+    };
+
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
 
   // Auto-jump to the Exams page if the candidate arrived here by verifying
   // an Exam ID on the Dashboard.
@@ -253,7 +291,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     try {
       await redeemPackageCourseCodeApi(packageId, firmId, code.trim());
       await refreshProgress();
-      setUnlockMode(null);
+      setShowStartTrainingModal(false);
       setFirmId('');
       setCode('');
     } catch (err: any) {
@@ -309,16 +347,33 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const allExamsPassed = hasExams && !!summary && summary.exams.passed === summary.exams.total;
   const interviewUnlocked = !!summary?.interview.unlocked && modulesUnlocked;
   const analyticsVisible = !!summary?.analyticsVisible;
-  const lockedCourseCount = courses.filter((course) => {
-    const enrollment = enrollments.find(
-      (item) =>
-        item.itemType === 'course' &&
-        item.itemId === course.id &&
-        item.packageId === packageId &&
-        item.status !== 'failed'
-    );
-    return !enrollment || enrollment.status === 'pending';
-  }).length;
+  const packageSummaryText = pkg.instructions?.whatItCarries
+    ? shortenWords(pkg.instructions.whatItCarries, 30)
+    : `${pkg.name}${hasExams ? ` includes ${exams.length === 1 ? 'an exam' : `${exams.length} exams`}` : ''}${hasCourses ? `, ${courses.length === 1 ? 'a short course' : `${courses.length} short courses`}` : ''}${hasInterview ? ', and an AI interview' : ''}. Complete each step to finish certification review.`;
+  const whyStudyText = shortenWords(
+    pkg.instructions?.whyStudyIt ||
+      'This package prepares you for one career track with practical and standardized proof of competence that employers can trust.',
+    28
+  );
+  const certificateText = shortenWords(
+    pkg.instructions?.whyCertificateMatters ||
+      'Your certificate confirms completed learning and assessment steps with a verification code recruiters can validate quickly.',
+    24
+  );
+  const confidentialityText = shortenWords(
+    pkg.instructions?.confidentialityNote ||
+      'Your personal data, exam responses, and interview records are kept private and used only for assessment and certification review.',
+    24
+  );
+  const instructionSteps = pkg.instructions?.howToCompleteSteps?.length
+    ? pkg.instructions.howToCompleteSteps.slice(0, 4).map((step) => shortenWords(step, 14))
+    : [
+        'Confirm the Package ID from your recruiter email.',
+        ...(hasCourses ? [`Complete the assigned course module${courses.length > 1 ? 's' : ''}.`] : []),
+        ...(hasExams ? ['Take and pass each assigned exam.'] : []),
+        ...(hasInterview ? ['Finish the AI interview after exam completion.'] : []),
+        'Wait for review, then download your certificate.'
+      ].slice(0, 4);
 
   const launchDefaultModule = () => {
     if (!modulesUnlocked) {
@@ -333,6 +388,43 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
       setActiveModule('exam');
       return;
     }
+    setActiveModule('screening');
+  };
+
+  const launchTrainingNow = () => {
+    setShowStartTrainingModal(false);
+    if (!modulesUnlocked) {
+      setActiveModule('instructions');
+      return;
+    }
+
+    const firstUnlockedCourse = courses.find((course) => {
+      const enrollment = enrollments.find(
+        (item) =>
+          item.itemType === 'course' &&
+          item.itemId === course.id &&
+          item.packageId === packageId &&
+          item.status !== 'failed' &&
+          item.status !== 'pending'
+      );
+      return !!enrollment;
+    });
+
+    if (firstUnlockedCourse) {
+      onStartCourse(firstUnlockedCourse.id);
+      return;
+    }
+
+    if (hasCourses) {
+      setActiveModule('course');
+      return;
+    }
+
+    if (hasExams) {
+      setActiveModule('exam');
+      return;
+    }
+
     setActiveModule('screening');
   };
 
@@ -378,6 +470,34 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   ];
 
   const completionPercent = summary?.overall.completionPercent || 0;
+  const totalCourseCost = courses.reduce((sum, course) => sum + Number(course.costKsh || 0), 0);
+  const courseCompleted = !hasCourses || ((summary?.courses.completed || 0) >= (summary?.courses.total || 0));
+  const shouldShowBottomAction = scrollRatio >= 0.74 && modulesUnlocked;
+  const shouldShowScrollDown = scrollRatio < 0.9;
+  const lockedCourses = courses.filter((course) => {
+    const enrollment = enrollments.find(
+      (item) =>
+        item.itemType === 'course' &&
+        item.itemId === course.id &&
+        item.packageId === packageId &&
+        item.status !== 'failed'
+    );
+    return !enrollment || enrollment.status === 'pending';
+  });
+  const primaryLockedCourse = lockedCourses[0] || null;
+  const firstIncompleteExamIndex = exams.findIndex((exam) => {
+    const enrollment = enrollments.find(
+      (item) =>
+        item.itemType === 'exam' &&
+        item.itemId === exam.id &&
+        item.packageId === packageId &&
+        item.status !== 'failed'
+    );
+    return enrollment?.status !== 'completed';
+  });
+  const visibleExamLimit = firstIncompleteExamIndex === -1 ? exams.length : firstIncompleteExamIndex + 1;
+  const visibleExams = exams.slice(0, visibleExamLimit);
+  const hiddenExamsCount = Math.max(0, exams.length - visibleExams.length);
   const stepCards = [
     {
       id: 'read',
@@ -535,6 +655,16 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        <div className="sticky top-[74px] z-[9] bg-white/95 backdrop-blur rounded-lg border border-line px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between text-xs font-semibold text-ink mb-1.5">
+            <span>Certification progress</span>
+            <span>{completionPercent}% to certificate readiness</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-brand-700 via-brand-600 to-mint-500" style={{ width: `${completionPercent}%` }} />
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={onBack}
@@ -689,86 +819,50 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
 
             <section className="lg:col-span-8 xl:col-span-9 space-y-5">
               {activeModule === 'instructions' && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 flex items-center justify-center text-white shrink-0">
                       <ListChecks className="h-5 w-5" />
                     </div>
                     <div>
                       <p className="font-mono text-[11px] font-semibold tracking-[0.15em] text-brand-600 uppercase">Module 1 · Instructions</p>
-                      <h2 className="font-display text-xl font-bold text-ink">Instructions and Guidelines</h2>
+                      <h2 className="font-display text-xl font-bold text-ink">Quick Instructions</h2>
                     </div>
                   </div>
 
-                  <div className="space-y-4 text-sm text-muted leading-relaxed">
-            <p>
-              <span className="font-semibold text-ink">What this package carries: </span>
-              {pkg.instructions?.whatItCarries ? pkg.instructions.whatItCarries : (
-                <>
-                  {pkg.name}{hasExams ? ` includes ${exams.length === 1 ? 'an exam' : `${exams.length} exams`}` : ''}
-                  {hasCourses ? `, ${courses.length === 1 ? 'a short course' : `${courses.length} short courses`}` : ''}
-                  {hasInterview ? ', and a mandatory AI-agent interview' : ''}. Complete each assigned module to finish
-                  this package and move to certification review.
-                </>
-              )}
-            </p>
+                  <div className="space-y-3 text-sm text-muted leading-6">
+                    <p>
+                      <span className="font-semibold text-ink">Package summary: </span>
+                      {packageSummaryText}
+                    </p>
 
-            <div className="border border-line rounded-lg bg-fog p-4 space-y-2">
-              <p className="text-xs font-semibold text-ink uppercase tracking-wide">Why study it</p>
-              <p className="text-sm text-muted leading-6">
-                {pkg.instructions?.whyStudyIt || `This package is built for candidates working toward standardized,
-                verifiable proof of competence for one clear career track. Follow this package to prepare for real
-                role expectations and show employers that your skills are assessed against a consistent standard.`}
-              </p>
-            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="border border-line rounded-lg bg-fog p-3 space-y-1.5">
+                        <p className="text-[11px] font-semibold text-ink uppercase tracking-wide">Why study it</p>
+                        <p className="text-sm text-muted">{whyStudyText}</p>
+                      </div>
+                      <div className="border border-line rounded-lg bg-fog p-3 space-y-1.5">
+                        <p className="text-[11px] font-semibold text-ink uppercase tracking-wide">Certificate value</p>
+                        <p className="text-sm text-muted">{certificateText}</p>
+                      </div>
+                    </div>
 
-            <p className="leading-7 text-gray-700">
-              <span className="font-semibold text-ink">Why the certificate matters: </span>
-              {pkg.instructions?.whyCertificateMatters ? (
-                pkg.instructions.whyCertificateMatters.split('\n').map((para, i) => (
-                  <span key={i}>
-                    {para}
-                    <br />
-                    <br />
-                  </span>
-                ))
-              ) : (
-                <>
-                  Your certificate confirms that you completed the required learning and assessment steps for this
-                  package. It includes a verification code that employers and recruiters can check quickly, helping
-                  them trust your profile and move your application forward faster.
-                </>
-              )}
-            </p>
+                    <div className="border border-line rounded-lg bg-fog p-3 space-y-1.5">
+                      <p className="text-[11px] font-semibold text-ink uppercase tracking-wide">Complete in 4 steps</p>
+                      <ol className="space-y-1 text-sm text-muted list-decimal list-inside">
+                        {instructionSteps.map((step, i) => (
+                          <li key={i}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
 
-            <div className="border border-line rounded-lg bg-fog p-4 space-y-2">
-              <p className="text-xs font-semibold text-ink uppercase tracking-wide">How to complete this package</p>
-              <ol className="space-y-1.5 text-sm text-muted list-decimal list-inside">
-                {pkg.instructions?.howToCompleteSteps?.length ? (
-                  pkg.instructions.howToCompleteSteps.map((step, i) => <li key={i}>{step}</li>)
-                ) : (
-                  <>
-                    <li>Use your Package ID from your recruiter email to confirm you are in the correct package.</li>
-                    {hasCourses && <li>Complete the assigned course module{courses.length > 1 ? 's' : ''}.</li>}
-                    {hasExams && <li>Take and pass each assigned exam.</li>}
-                    {hasInterview && <li>Once exams are passed, complete the AI-agent interview.</li>}
-                    <li>After successful review, your certificate is issued and available for download.</li>
-                  </>
-                )}
-              </ol>
-            </div>
-
-            <div className="flex items-start gap-2.5 border border-brand-200 bg-brand-50/60 rounded-lg p-4">
-              <ShieldCheck className="h-4 w-4 text-brand-700 shrink-0 mt-0.5" />
-              <p className="text-xs text-brand-800 leading-relaxed">
-                {pkg.instructions?.confidentialityNote || `Your information is kept confidential and secure. Exam answers, interview recordings, and personal
-                details are only used to assess and certify you, and are never shared outside the Atesta and HR team during review
-                process.`}
-              </p>
-            </div>
+                    <div className="flex items-start gap-2 border border-brand-200 bg-brand-50/60 rounded-lg p-3">
+                      <ShieldCheck className="h-4 w-4 text-brand-700 shrink-0 mt-0.5" />
+                      <p className="text-xs text-brand-800 leading-relaxed">{confidentialityText}</p>
+                    </div>
                   </div>
 
-                  <div className="border-t border-line pt-5 space-y-4">
+                  <div className="border-t border-line pt-4 space-y-3">
                     <label className="flex items-start gap-2.5 text-sm text-ink cursor-pointer">
                       <input
                         type="checkbox"
@@ -778,8 +872,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                         className="mt-0.5 h-4 w-4 rounded border-line accent-brand-600 cursor-pointer"
                       />
                       <span>
-                        I have read and understood the Instructions and Guidelines above, and I accept the Terms &amp;
-                        Conditions for this package.
+                        I have read the quick instructions and I accept the package Terms &amp; Conditions.
                       </span>
                     </label>
                     {termsAccepted && (
@@ -796,9 +889,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                   <div className="rounded-xl border border-line bg-brand-50/70 p-5">
                     <h3 className="font-display text-lg font-bold text-ink">Course Access and Training Funding</h3>
                     <p className="mt-2 text-sm text-muted leading-relaxed">
-                      Use your discount code if provided by your recruiter, or pay the listed amount directly.
-                      If you are unsure who should pay, ask your recruiter or employer whether your training is
-                      sponsored or required as a separate payment.
+                      Course payment and employer access-code redemption are now available directly from the
+                      <strong> Start Training {'>>'} </strong> action in Module 1 to keep your flow simple.
                     </p>
                   </div>
 
@@ -834,14 +926,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                               Launch Course
                             </button>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => handlePayForCourse(course.id)}
-                              disabled={payingCourseId === course.id || !modulesUnlocked}
-                              className="px-4 py-2 rounded-md bg-ink hover:bg-black text-white text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {payingCourseId === course.id ? 'Processing...' : `Pay KSh ${course.costKsh.toLocaleString()} and Unlock`}
-                            </button>
+                            <p className="text-xs text-muted">
+                              Locked. Use <span className="font-semibold text-ink">Start Training {'>>'}</span> to pay or apply an employer code.
+                            </p>
                           )}
                         </div>
                       );
@@ -849,58 +936,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
 
                     {courses.length === 0 && <p className="text-sm text-muted">No course is assigned to this package.</p>}
                   </div>
-
-                  {hasCourses && lockedCourseCount > 0 && (
-                    <div className="rounded-lg border border-line bg-white p-4 space-y-3">
-                      <p className="text-sm font-semibold text-ink">Have a recruiter discount code?</p>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setUnlockMode('pay')}
-                          className={`px-3 py-2 rounded-md border text-xs font-semibold cursor-pointer ${unlockMode === 'pay' ? 'bg-brand-50 border-brand-300 text-brand-800' : 'border-line text-ink'}`}
-                        >
-                          Pay normally
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setUnlockMode('code')}
-                          className={`px-3 py-2 rounded-md border text-xs font-semibold cursor-pointer ${unlockMode === 'code' ? 'bg-brand-50 border-brand-300 text-brand-800' : 'border-line text-ink'}`}
-                        >
-                          Use code
-                        </button>
-                      </div>
-
-                      {unlockMode === 'code' && (
-                        <div className="space-y-2">
-                          <select
-                            value={firmId}
-                            onChange={(e) => setFirmId(e.target.value)}
-                            className="w-full px-3 py-2 border border-line rounded-md text-sm"
-                          >
-                            <option value="">Select recruitment firm</option>
-                            {AFFILIATE_FIRMS.map((firm) => (
-                              <option key={firm.id} value={firm.id}>{firm.name}</option>
-                            ))}
-                          </select>
-                          <input
-                            value={code}
-                            onChange={(e) => setCode(e.target.value.toUpperCase())}
-                            placeholder="Enter 7-character code"
-                            className="w-full px-3 py-2 border border-line rounded-md text-sm"
-                          />
-                          {codeError && <p className="text-xs text-rose-700">{codeError}</p>}
-                          <button
-                            type="button"
-                            disabled={redeemingCode}
-                            onClick={handleRedeemCode}
-                            className="px-4 py-2 rounded-md bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold disabled:opacity-50"
-                          >
-                            {redeemingCode ? 'Redeeming...' : 'Redeem and Unlock'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -915,7 +950,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                   </div>
 
                   <div className="space-y-3">
-                    {exams.map((exam, index) => {
+                    {visibleExams.map((exam, index) => {
                       const enrollment = enrollments.find(
                         (item) =>
                           item.itemType === 'exam' &&
@@ -924,7 +959,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                           item.status !== 'failed'
                       );
                       const paid = !!enrollment && enrollment.status !== 'pending';
-                      const previousExam = index > 0 ? exams[index - 1] : null;
+                      const previousExam = index > 0 ? visibleExams[index - 1] : null;
                       const previousEnrollment = previousExam
                         ? enrollments.find(
                             (item) =>
@@ -962,7 +997,14 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                             <button
                               type="button"
                               disabled={processingExamId === exam.id || !modulesUnlocked}
-                              onClick={() => handlePayForExam(exam.id)}
+                              onClick={() =>
+                                setPaymentIntent({
+                                  type: 'exam',
+                                  id: exam.id,
+                                  name: exam.name,
+                                  amountKsh: Number(exam.costKsh || 0)
+                                })
+                              }
                               className="px-4 py-2 rounded-md bg-ink hover:bg-black text-white text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {processingExamId === exam.id ? 'Processing...' : `Pay KSh ${exam.costKsh.toLocaleString()} and Unlock Exam`}
@@ -981,6 +1023,12 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                         </div>
                       );
                     })}
+
+                    {hiddenExamsCount > 0 && (
+                      <div className="rounded-lg border border-dashed border-line bg-white p-4 text-xs text-muted">
+                        {hiddenExamsCount} upcoming exam{hiddenExamsCount === 1 ? '' : 's'} will unlock after you complete the current exam.
+                      </div>
+                    )}
 
                     {exams.length === 0 && <p className="text-sm text-muted">No exam is assigned to this package.</p>}
                   </div>
@@ -1086,6 +1134,178 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
           Continue every step from this single package workspace using the left stepper flow.
         </p>
       </main>
+
+      {activeModule === 'instructions' && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 px-3 w-full max-w-md">
+          <button
+            type="button"
+            onClick={() => setShowStartTrainingModal(true)}
+            className="w-full py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm shadow-[0_14px_34px_-16px_rgba(15,85,53,0.55)] border border-brand-800/40 transition cursor-pointer"
+          >
+            Start Training {'>>'}
+          </button>
+        </div>
+      )}
+
+      {shouldShowScrollDown && (
+        <button
+          type="button"
+          onClick={() => window.scrollBy({ top: Math.round(window.innerHeight * 0.78), behavior: 'smooth' })}
+          className="fixed right-5 bottom-20 z-40 w-11 h-11 rounded-full bg-white border border-line text-brand-700 hover:text-brand-800 hover:border-brand-300 shadow-md flex items-center justify-center cursor-pointer"
+          aria-label="Scroll down"
+          title="Scroll down"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      )}
+
+      {shouldShowBottomAction && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 px-3 w-full max-w-lg">
+          <div className="bg-white border border-line rounded-2xl shadow-[0_20px_45px_-24px_rgba(15,85,53,0.45)] px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted">
+              {courseCompleted
+                ? 'Coursework looks complete. Continue to your exam stage.'
+                : 'Continue your coursework, then proceed to exams.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setActiveModule(courseCompleted && hasExams ? 'exam' : 'course')}
+              className="shrink-0 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+            >
+              {courseCompleted && hasExams ? 'Complete Coursework & Start Exam' : 'Continue Coursework'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showStartTrainingModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/55 flex items-center justify-center p-4" onClick={() => setShowStartTrainingModal(false)}>
+          <div className="w-full max-w-xl bg-white rounded-2xl border border-line shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">Before You Start</p>
+              <h3 className="font-display text-xl font-bold text-ink mt-1">Training Funding & Access</h3>
+              <p className="text-sm text-muted mt-2 leading-relaxed">
+                This package has paid coursework. If your recruiter or employer gave you an access code,
+                you can use it below to unlock your training.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-line bg-fog p-4">
+              <p className="text-[11px] uppercase tracking-wide text-muted">Coursework Access Amount</p>
+              <p className="text-lg font-bold text-ink mt-1">KSh {totalCourseCost.toLocaleString()}</p>
+            </div>
+
+            <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-900 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span>Use Pay Now for secure checkout, or redeem your employer code to unlock training access.</span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-ink block">Access Code from Employer</label>
+              <select
+                value={firmId}
+                onChange={(e) => setFirmId(e.target.value)}
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm"
+              >
+                <option value="">Select recruitment firm</option>
+                {AFFILIATE_FIRMS.map((firm) => (
+                  <option key={firm.id} value={firm.id}>{firm.name}</option>
+                ))}
+              </select>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="Enter 7-character access code"
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm font-mono tracking-widest uppercase"
+              />
+              {codeError && <p className="text-xs text-rose-700">{codeError}</p>}
+              <button
+                type="button"
+                disabled={redeemingCode}
+                onClick={handleRedeemCode}
+                className="w-full px-4 py-2 rounded-lg border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-800 text-sm font-semibold disabled:opacity-50"
+              >
+                {redeemingCode ? 'Checking code...' : 'Use Access Code from Employer'}
+              </button>
+            </div>
+
+            <div className="pt-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowStartTrainingModal(false)}
+                className="px-4 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:text-ink hover:bg-fog cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!modulesUnlocked) {
+                    setActiveModule('instructions');
+                    setShowStartTrainingModal(false);
+                    return;
+                  }
+
+                  if (!primaryLockedCourse) {
+                    launchTrainingNow();
+                    return;
+                  }
+
+                  setShowStartTrainingModal(false);
+                  setActiveModule('course');
+                  void handlePayForCourse(primaryLockedCourse.id);
+                }}
+                disabled={Boolean(payingCourseId)}
+                className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+              >
+                {payingCourseId ? 'Opening payment...' : primaryLockedCourse ? 'Pay Now' : 'Start Training'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {paymentIntent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/55 flex items-center justify-center p-4" onClick={() => setPaymentIntent(null)}>
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-line shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">Payment confirmation</p>
+              <h3 className="font-display text-xl font-bold text-ink mt-1">
+                Continue to exam payment?
+              </h3>
+              <p className="text-sm text-muted mt-2 leading-relaxed">
+                You are about to unlock the next package step through secure Paystack checkout.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-line bg-fog p-4 space-y-2">
+              <p className="text-sm font-bold text-ink">{paymentIntent.name}</p>
+              <p className="text-xs text-muted">Type: Exam</p>
+              <p className="text-sm font-semibold text-ink">Amount: KSh {paymentIntent.amountKsh.toLocaleString()}</p>
+            </div>
+
+            <div className="pt-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentIntent(null)}
+                className="px-4 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:text-ink hover:bg-fog cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handlePayForExam(paymentIntent.id);
+                  setPaymentIntent(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+              >
+                Continue to Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
