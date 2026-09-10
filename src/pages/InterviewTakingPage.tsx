@@ -43,9 +43,6 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
         setScope('package');
         setAccess(data);
       } catch (packageErr: any) {
-        // Not a package id — fall back to the legacy standalone-exam path.
-        // Any other error (network, auth, etc.) should surface as-is rather
-        // than being swallowed by a silent fallback.
         if (packageErr.message === 'Package not found') {
           const data = await getMyInterviewAccessApi(id);
           setScope('exam');
@@ -80,9 +77,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
 
     setProcessing(true);
     try {
-      // enrollApi('interview', id) already resolves package-vs-exam
-      // server-side, identically to the access lookup above — no branching
-      // needed here regardless of scope.
+
       const { enrollment, costKsh } = await enrollApi('interview', id);
 
       if (enrollment.status === 'in_progress' || enrollment.status === 'completed') {
@@ -281,7 +276,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
         <div className="bg-white rounded-lg border border-line p-6 text-center space-y-2">
           <CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto" />
           <p className="text-sm font-semibold text-ink">Interview completed and passed</p>
-          <p className="text-sm text-muted">Check your certificates page — it'll be ready once approved.</p>
+          <p className="text-sm text-muted">Check your certificates page it'll be ready once approved.</p>
         </div>
       </Shell>
     );
@@ -333,13 +328,13 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
                     <div className="border border-line rounded-lg p-5 bg-white space-y-3">
             <h2 className="font-display text-sm font-bold text-ink">How to prepare for your International Job Screening</h2>
             <ul className="text-xs text-muted space-y-1.5 list-disc list-inside leading-relaxed">
-              <li>Turn your camera on for the entire session — your video must stay on throughout.</li>
+              <li>Turn your camera on for the entire session your video must stay on throughout.</li>
               <li>Make sure you are clearly audible: use a quiet room and, if possible, headphones with a mic.</li>
               <li>Use a stable internet connection and a fully charged device.</li>
               <li>Dress and present yourself as you would for a real international employer interview.</li>
               <li>Expect general questions (tell us about yourself, strengths/weaknesses, why this role) as well
                   as questions specific to the profession this package certifies.</li>
-              <li>Answer in clear, complete sentences — the AI agent is assessing communication as well as content.</li>
+              <li>Answer in clear, complete sentences the AI agent is assessing communication as well as content.</li>
               <li>Sit somewhere private and free of interruptions or background noise.</li>
               <li>Have any role-relevant experience or examples ready to reference — specific stories land better
                   than generic answers.</li>
