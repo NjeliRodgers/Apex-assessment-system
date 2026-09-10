@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileCheck2, BookOpen, Layers, Clock, ListChecks, CalendarDays, CheckCircle2 } from 'lucide-react';
+import { FileCheck2, BookOpen, Layers, Clock, ListChecks, CalendarDays, CheckCircle2, CreditCard } from 'lucide-react';
 import {
   getCatalogItemApi,
   CatalogItemDetail,
@@ -40,6 +40,7 @@ export const CatalogItemDetailPage: React.FC<CatalogItemDetailPageProps> = ({
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const loadItemAndEnrollment = async () => {
     setLoading(true);
@@ -257,7 +258,7 @@ export const CatalogItemDetailPage: React.FC<CatalogItemDetailPageProps> = ({
             {!isPaidUp && (
               <button
                 type="button"
-                onClick={handleEnrollAndPay}
+                onClick={() => setShowPaymentModal(true)}
                 disabled={processing}
                 className="w-full max-w-xs mx-auto py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
@@ -335,6 +336,51 @@ export const CatalogItemDetailPage: React.FC<CatalogItemDetailPageProps> = ({
           </div>
         </div>
       </div>
+
+      {showPaymentModal && item && (
+        <div className="fixed inset-0 z-50 bg-slate-900/55 flex items-center justify-center p-4" onClick={() => setShowPaymentModal(false)}>
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-line shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">Payment confirmation</p>
+              <h3 className="font-display text-xl font-bold text-ink mt-1">Continue to secure checkout?</h3>
+              <p className="text-sm text-muted mt-2 leading-relaxed">
+                Please review the payment details below before opening Paystack.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-line bg-fog p-4 space-y-2">
+              <p className="text-sm font-bold text-ink">{item.name}</p>
+              <p className="text-xs text-muted uppercase">{itemType}</p>
+              <p className="text-sm font-semibold text-ink">Amount: KSh {item.costKsh.toLocaleString()}</p>
+            </div>
+
+            <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-900 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span>Atesta does not store your card or mobile-money details. Payment is handled by Paystack.</span>
+            </div>
+
+            <div className="pt-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="px-4 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:text-ink hover:bg-fog cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleEnrollAndPay();
+                  setShowPaymentModal(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+              >
+                Continue to Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

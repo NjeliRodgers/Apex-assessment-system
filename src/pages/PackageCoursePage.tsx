@@ -44,12 +44,13 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [unlockMode, setUnlockMode] = useState<UnlockMode>(null);
+  const [unlockMode, setUnlockMode] = useState<UnlockMode>('code');
   const [payingCourseId, setPayingCourseId] = useState<string | null>(null);
   const [firmId, setFirmId] = useState('');
   const [code, setCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
   const [codeError, setCodeError] = useState('');
+  const [paymentModalCourse, setPaymentModalCourse] = useState<CourseRow | null>(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -383,21 +384,21 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setUnlockMode('pay')}
-                    className={`py-2.5 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer transition ${
-                      unlockMode === 'pay' ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line text-ink hover:bg-fog'
-                    }`}
-                  >
-                    <CreditCard className="h-4 w-4" /> Pay
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setUnlockMode('code')}
                     className={`py-2.5 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer transition ${
                       unlockMode === 'code' ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line text-ink hover:bg-fog'
                     }`}
                   >
-                    <KeyRound className="h-4 w-4" /> I have a code
+                    <KeyRound className="h-4 w-4" /> Use Code to Access
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUnlockMode('pay')}
+                    className={`py-2.5 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer transition ${
+                      unlockMode === 'pay' ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line text-ink hover:bg-fog'
+                    }`}
+                  >
+                    <CreditCard className="h-4 w-4" /> Pay to Access
                   </button>
                 </div>
 
@@ -407,7 +408,7 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
                       <button
                         key={course.id}
                         type="button"
-                        onClick={() => handlePayForCourse(course)}
+                        onClick={() => setPaymentModalCourse(course)}
                         disabled={payingCourseId === course.id}
                         className="w-full max-w-xs mx-auto py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
@@ -473,6 +474,51 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
           </div>
         </div>
       </div>
+
+      {paymentModalCourse && (
+        <div className="fixed inset-0 z-50 bg-slate-900/55 flex items-center justify-center p-4" onClick={() => setPaymentModalCourse(null)}>
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-line shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">Payment confirmation</p>
+              <h3 className="font-display text-xl font-bold text-ink mt-1">Unlock course access</h3>
+              <p className="text-sm text-muted mt-2 leading-relaxed">
+                Review this training payment before continuing to secure Paystack checkout.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-line bg-fog p-4 space-y-2">
+              <p className="text-sm font-bold text-ink">{paymentModalCourse.name}</p>
+              <p className="text-xs text-muted">Package: {packageName || 'Certification Package'}</p>
+              <p className="text-sm font-semibold text-ink">Amount: KSh {paymentModalCourse.costKsh.toLocaleString()}</p>
+            </div>
+
+            <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-900 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span>If you have a sponsored code, you can go back and use the I have a code option instead.</span>
+            </div>
+
+            <div className="pt-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentModalCourse(null)}
+                className="px-4 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:text-ink hover:bg-fog cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handlePayForCourse(paymentModalCourse);
+                  setPaymentModalCourse(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+              >
+                Continue to Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

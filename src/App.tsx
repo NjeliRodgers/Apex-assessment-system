@@ -213,6 +213,9 @@ const AuthedGate: React.FC = () => {
           candidateEmail={candidate.email}
           onBack={() => setScreen({ view: 'detail', itemType: 'package', itemId: screen.packageId })}
           onStartExam={(examId) => setScreen({ view: 'exam', examId, packageId: screen.packageId })}
+          onGoToInterview={(name) =>
+            setScreen({ view: 'interview', interviewId: screen.packageId, interviewName: name, packageId: screen.packageId })
+          }
         />
       );
     case 'packageCourse':

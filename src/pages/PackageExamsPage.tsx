@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileCheck2, Clock, ListChecks, CheckCircle2, XCircle, LoaderCircle, Sparkles, Layers, BarChart3, Lock } from 'lucide-react';
+import { FileCheck2, Clock, ListChecks, CheckCircle2, XCircle, LoaderCircle, Sparkles, Layers, BarChart3, Lock, Bot, CreditCard } from 'lucide-react';
 import {
   getCatalogItemApi,
   getMyEnrollmentsApi,
@@ -18,6 +18,7 @@ interface PackageExamsPageProps {
   candidateEmail: string;
   onBack: () => void;
   onStartExam: (examId: string) => void;
+  onGoToInterview: (name: string) => void;
 }
 
 interface ExamRow {
@@ -34,7 +35,7 @@ interface ExamState {
   access: InterviewAccess | null; // reused purely for its `eligible` (=passed) flag
 }
 
-export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, candidateName, candidateEmail, onBack, onStartExam }) => {
+export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, candidateName, candidateEmail, onBack, onStartExam, onGoToInterview }) => {
   const [packageName, setPackageName] = useState('');
   const [examIntro, setExamIntro] = useState<string | null>(null);
   const [exams, setExams] = useState<ExamRow[]>([]);
@@ -43,6 +44,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
   const [loading, setLoading] = useState(true);
   const [processingExamId, setProcessingExamId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [paymentModalExam, setPaymentModalExam] = useState<ExamRow | null>(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -144,6 +146,11 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
 
   const progressPercent = summary?.overall.completionPercent || 0;
   const analyticsVisible = !!summary?.analyticsVisible;
+  const firstIncompleteIndex = exams.findIndex((exam) => examState[exam.id]?.enrollment?.status !== 'completed');
+  const visibleLimit = firstIncompleteIndex === -1 ? exams.length : firstIncompleteIndex + 1;
+  const visibleExams = exams.slice(0, visibleLimit);
+  const hiddenExamsCount = Math.max(0, exams.length - visibleExams.length);
+  const allExamsPassed = !!summary && summary.exams.total > 0 && summary.exams.passed === summary.exams.total;
   const interviewStatus = !summary?.interview.required
     ? 'Not required'
     : summary.interview.completed
@@ -169,6 +176,16 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
       }}
     >
       <div className="max-w-6xl mx-auto space-y-4">
+        <div className="sticky top-3 z-10 bg-white/95 backdrop-blur rounded-lg border border-line px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between text-xs font-semibold text-ink mb-1.5">
+            <span>Package progress</span>
+            <span>{progressPercent}% certificate readiness</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-brand-700 via-brand-600 to-mint-500" style={{ width: `${progressPercent}%` }} />
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={onBack}
@@ -221,6 +238,30 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
             </div>
           </div>
         </div>
+
+        {allExamsPassed && (
+          <div className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">
+                  Final Step Unlocked
+                </p>
+                <h2 className="font-display text-lg font-bold text-ink mt-1">AI Screening is now available</h2>
+                <p className="text-sm text-muted mt-1">
+                  You've completed your exams. Continue to the AI screening stage to finish the package workflow.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onGoToInterview(`${packageName || 'Package'} - AI Screening`)}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-700 hover:bg-brand-800 text-white text-sm font-bold rounded-lg cursor-pointer"
+              >
+                <Bot className="h-4 w-4" />
+                Continue to AI Screening
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-6 space-y-4">
           <div className="flex items-start gap-3">
@@ -312,12 +353,12 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
             {error && <div className="p-3 bg-rose-50 text-rose-700 text-xs rounded-lg border border-rose-200">{error}</div>}
 
             <div className="space-y-3">
-              {exams.map((exam, index) => {
+              {visibleExams.map((exam, index) => {
                 const state = examState[exam.id];
                 const isPaidUp = state?.enrollment?.status === 'in_progress' || state?.enrollment?.status === 'completed';
                 const passed = !!state?.access?.eligible;
                 const isProcessing = processingExamId === exam.id;
-                const previousExam = index > 0 ? exams[index - 1] : null;
+                const previousExam = index > 0 ? visibleExams[index - 1] : null;
                 const previousDone = !previousExam || examState[previousExam.id]?.enrollment?.status === 'completed';
 
                 return (
@@ -380,7 +421,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
                     {previousDone && !isPaidUp && (
                       <button
                         type="button"
-                        onClick={() => handlePayForExam(exam)}
+                        onClick={() => setPaymentModalExam(exam)}
                         disabled={isProcessing}
                         className="w-full max-w-xs mx-auto py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
@@ -406,6 +447,11 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
                   </div>
                 );
               })}
+              {hiddenExamsCount > 0 && (
+                <div className="rounded-lg border border-dashed border-line bg-white p-4 text-xs text-muted">
+                  {hiddenExamsCount} upcoming exam{hiddenExamsCount === 1 ? '' : 's'} will appear after you complete the current exam.
+                </div>
+              )}
               {exams.length === 0 && <p className="text-sm text-muted text-center py-6">No exams assigned to this package yet.</p>}
             </div>
 
@@ -415,6 +461,51 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
           </div>
         </div>
       </div>
+
+      {paymentModalExam && (
+        <div className="fixed inset-0 z-50 bg-slate-900/55 flex items-center justify-center p-4" onClick={() => setPaymentModalExam(null)}>
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-line shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">Payment confirmation</p>
+              <h3 className="font-display text-xl font-bold text-ink mt-1">Ready to unlock this exam?</h3>
+              <p className="text-sm text-muted mt-2 leading-relaxed">
+                Review the exam details below, then continue to secure Paystack checkout.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-line bg-fog p-4 space-y-2">
+              <p className="text-sm font-bold text-ink">{paymentModalExam.name}</p>
+              <p className="text-xs text-muted">Package: {packageName || 'Certification Package'}</p>
+              <p className="text-sm font-semibold text-ink">Amount: KSh {paymentModalExam.costKsh.toLocaleString()}</p>
+            </div>
+
+            <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-900 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span>After payment is confirmed, this exam unlocks immediately in your package flow.</span>
+            </div>
+
+            <div className="pt-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentModalExam(null)}
+                className="px-4 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:text-ink hover:bg-fog cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handlePayForExam(paymentModalExam);
+                  setPaymentModalExam(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+              >
+                Continue to Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

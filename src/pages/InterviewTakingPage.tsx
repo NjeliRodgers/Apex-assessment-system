@@ -4,11 +4,9 @@ import {
   getMyPackageInterviewAccessApi,
   enrollApi,
   verifyEnrollmentPaymentApi,
-  startMyInterviewApi,
-  startMyPackageInterviewApi,
   InterviewAccess
 } from '../api/apexCatalogApi';
-import { ArrowLeft, Bot, Lock, LoaderCircle, CheckCircle2, Hourglass, Sparkles, Layers } from 'lucide-react';
+import { ArrowLeft, Bot, Lock, LoaderCircle, CheckCircle2, Hourglass, Sparkles, Layers, CreditCard, Mail } from 'lucide-react';
 
 interface InterviewTakingPageProps {
   // Can be a packageId (candidate came from a package's Module 4) or a bare
@@ -31,6 +29,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const loadAccess = async () => {
     setLoading(true);
@@ -112,23 +111,6 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
       handler.openIframe();
     } catch (err: any) {
       setError(err.message || 'Enrollment failed');
-      setProcessing(false);
-    }
-  };
-
-  const handleStart = async () => {
-    setError('');
-    setProcessing(true);
-    try {
-      if (scope === 'package') {
-        await startMyPackageInterviewApi(id);
-      } else {
-        await startMyInterviewApi(id);
-      }
-      await loadAccess();
-    } catch (err: any) {
-      setError(err.message || 'Could not start your interview');
-    } finally {
       setProcessing(false);
     }
   };
@@ -284,17 +266,29 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
 
   const isPaidUp = access.enrollmentStatus === 'in_progress';
 
-  if (isPaidUp && access.activeSession) {
+  if (isPaidUp) {
     return (
       <Shell>
         {header}
-        <div className="bg-white rounded-lg border border-line p-6 text-center space-y-3">
-          <Hourglass className="h-6 w-6 text-brand-700 mx-auto" />
-          <p className="text-sm font-semibold text-ink">Your interview session is active</p>
-          <p className="text-sm text-muted">
-            Session status: <span className="font-mono">{access.activeSession.status}</span>. Your results will be emailed to you
-            once the AI-agent interview has been reviewed.
+        <div className="bg-white rounded-lg border border-line p-8 sm:p-10 text-center space-y-4 max-w-2xl mx-auto">
+          <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto">
+            <Hourglass className="h-8 w-8 text-amber-600" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-ink">AI Screening queued in interview backlog</h2>
+          <p className="text-sm text-muted leading-relaxed">
+            Your payment is confirmed and your screening request has been added to the interview backlog. A secure launch
+            link will be sent to <strong>{candidateEmail}</strong> once your slot is prepared.
           </p>
+          <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3 text-xs text-amber-900 flex items-center justify-center gap-2">
+            <Mail className="h-4 w-4 shrink-0" />
+            <span>Check your inbox regularly for the interview access link and schedule instructions.</span>
+          </div>
+          <a
+            href={window.location.origin}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold"
+          >
+            Return to Dashboard
+          </a>
         </div>
       </Shell>
     );
@@ -350,7 +344,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
           </div>
           <button
             type="button"
-            onClick={handleEnrollAndPay}
+            onClick={() => setShowPaymentModal(true)}
             disabled={processing}
             className="w-full max-w-xs mx-auto py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -359,15 +353,49 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
         </>
       )}
 
-      {isPaidUp && !access.activeSession && (
-        <button
-          type="button"
-          onClick={handleStart}
-          disabled={processing}
-          className="w-full py-3 bg-brand-700 hover:bg-brand-800 text-white font-display font-bold text-sm rounded-lg shadow-sm transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {processing ? 'Starting…' : 'Start online screening'}
-        </button>
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/55 flex items-center justify-center p-4" onClick={() => setShowPaymentModal(false)}>
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-line shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">Payment confirmation</p>
+              <h3 className="font-display text-xl font-bold text-ink mt-1">Proceed to AI screening payment?</h3>
+              <p className="text-sm text-muted mt-2 leading-relaxed">
+                Once payment is successful, your interview will be queued and the launch link will be sent to your email.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-line bg-fog p-4 space-y-2">
+              <p className="text-sm font-bold text-ink">International Job Screening</p>
+              <p className="text-xs text-muted">Candidate: {candidateName}</p>
+              <p className="text-sm font-semibold text-ink">Amount: KSh {(access.costKsh || 0).toLocaleString()}</p>
+            </div>
+
+            <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-xs text-brand-900 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span>Secure payment is processed by Paystack. Atesta never sees your card or mobile-money credentials.</span>
+            </div>
+
+            <div className="pt-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="px-4 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:text-ink hover:bg-fog cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleEnrollAndPay();
+                  setShowPaymentModal(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+              >
+                Continue to Payment
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </Shell>
   );
