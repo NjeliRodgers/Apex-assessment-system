@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getMyCourseModulesApi, markModuleCompleteApi, ApexCourseModule } from '../api/apexCatalogApi';
+import { notesToBlocks, notesToPlainText, NotesBlock } from '../utils/moduleNotesFormat';
 import {
   BookOpen,
   CheckCircle2,
@@ -35,15 +36,15 @@ const splitParagraphs = (text: string): string[] =>
     .map((p) => p.trim())
     .filter(Boolean);
 
-const chunkParagraphs = (arr: string[], size: number): string[][] => {
+const chunkParagraphs = <T,>(arr: T[], size: number): T[][] => {
   if (arr.length === 0) return [[]];
-  const out: string[][] = [];
+  const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 };
 
 const estimateMinutes = (module: ApexCourseModule): number => {
-  const words = `${module.contentBody || ''} ${module.summary || ''}`.trim().split(/\s+/).filter(Boolean).length;
+  const words = `${notesToPlainText(module.contentBody)} ${module.summary || ''}`.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(3, Math.round(words / 180));
 };
 
@@ -112,12 +113,12 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
   const allDone = modules.length > 0 && modules.every((m) => completedModuleIds.includes(m.id));
   const completionPercent = modules.length > 0 ? Math.round((completedModuleIds.length / modules.length) * 100) : 0;
 
-  const paragraphs = useMemo(() => (activeModule ? splitParagraphs(activeModule.contentBody || '') : []), [activeModule]);
+  const paragraphs = useMemo(() => (activeModule ? notesToBlocks(activeModule.contentBody) : []), [activeModule]);
   const pages = useMemo(() => chunkParagraphs(paragraphs, CHUNK_SIZE), [paragraphs]);
   const toc = useMemo(
     () =>
       paragraphs
-        .map((p, i) => ({ text: p.replace(/^##\s*/, ''), i, isHeading: p.startsWith('## ') }))
+        .map((p, i) => ({ text: p.html.replace(/<[^>]+>/g, ''), i, isHeading: p.isHeading }))
         .filter((p) => p.isHeading)
         .map((h) => ({ ...h, page: pages.findIndex((pg) => pg.includes(paragraphs[h.i])) })),
     [paragraphs, pages]
@@ -448,14 +449,10 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
                         <p className="text-sm text-muted">No notes have been added for this module yet.</p>
                       )}
                       {(pages[pageIndex] || []).map((p, idx) =>
-                        p.startsWith('## ') ? (
-                          <h3 key={idx} className="font-display font-bold text-base text-brand-800 pt-2">
-                            {p.replace(/^##\s*/, '')}
-                          </h3>
+                        p.isHeading ? (
+                          <h3 key={idx} className="font-display font-bold text-base text-brand-800 pt-2" dangerouslySetInnerHTML={{ __html: p.html }} />
                         ) : (
-                          <p key={idx} className="text-sm text-ink/90 leading-relaxed whitespace-pre-wrap">
-                            {p}
-                          </p>
+                          <div key={idx} className="text-sm text-ink/90 leading-relaxed" dangerouslySetInnerHTML={{ __html: p.html }} />
                         )
                       )}
                       {pages.length > 1 && (
