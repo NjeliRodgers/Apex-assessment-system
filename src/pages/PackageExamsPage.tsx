@@ -229,7 +229,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
             <div className="rounded-lg border border-white/25 bg-white/15 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 3</p>
               <p className="text-sm font-semibold">Exams (Current)</p>
-              <p className="text-[11px] text-white/80 mt-1">{summary ? `${summary.exams.passed}/${summary.exams.total} passed` : 'Loading...'}</p>
+              <p className="text-[11px] text-white/80 mt-1">{summary ? '' : 'Loading...'}</p>
             </div>
             <div className="rounded-lg border border-white/25 bg-white/10 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 4</p>
@@ -292,7 +292,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
                 </div>
                 <div className="rounded-lg border border-line p-3 bg-fog">
                   <p className="text-[11px] uppercase tracking-wide text-muted">Exam Results</p>
-                  <p className="text-sm font-bold text-ink mt-1">{summary.exams.passed}/{summary.exams.total} passed</p>
+                  <p className="text-sm font-bold text-ink mt-1">{''}</p>
                 </div>
                 <div className="rounded-lg border border-line p-3 bg-fog">
                   <p className="text-[11px] uppercase tracking-wide text-muted">Interview Unlock</p>
@@ -447,11 +447,7 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
                   </div>
                 );
               })}
-              {hiddenExamsCount > 0 && (
-                <div className="rounded-lg border border-dashed border-line bg-white p-4 text-xs text-muted">
-                  {hiddenExamsCount} upcoming exam{hiddenExamsCount === 1 ? '' : 's'} will appear after you complete the current exam.
-                </div>
-              )}
+              {/* Hidden upcoming exams notice removed as per UX request */}
               {exams.length === 0 && <p className="text-sm text-muted text-center py-6">No exams assigned to this package yet.</p>}
             </div>
 

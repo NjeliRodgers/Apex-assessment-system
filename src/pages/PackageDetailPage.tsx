@@ -104,6 +104,16 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const [selectedAccessMethod, setSelectedAccessMethod] = useState<'code' | 'pay' | null>(null);
   const [scrollRatio, setScrollRatio] = useState(0);
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
+
+  const showToast = (msg: string, ms = 3500) => {
+    setToastMessage(msg);
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = window.setTimeout(() => setToastMessage(null), ms);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -197,6 +207,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
       if (pendingEnrollment.status === 'in_progress' || pendingEnrollment.status === 'completed') {
         await refreshProgress();
         setPayingCourseId(null);
+        showToast('Course payment confirmed — training unlocked');
         return;
       }
 
@@ -212,6 +223,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
           verifyEnrollmentPaymentApi(pendingEnrollment.id, response.reference)
             .then(async () => {
               await refreshProgress();
+              showToast('Course payment confirmed — training unlocked');
             })
             .catch((err: any) => {
               setError(err.message || `We could not confirm your payment. Reference: ${response.reference}`);
@@ -288,6 +300,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     try {
       await redeemPackageCourseCodeApi(packageId, code.trim(), firmId || undefined);
       await refreshProgress();
+      showToast('Access code applied — training unlocked');
       setShowStartTrainingModal(false);
       setSelectedAccessMethod(null);
       setFirmId('');
@@ -469,6 +482,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const completionPercent = summary?.overall.completionPercent || 0;
   const totalCourseCost = courses.reduce((sum, course) => sum + Number(course.costKsh || 0), 0);
   const courseCompleted = !hasCourses || ((summary?.courses.completed || 0) >= (summary?.courses.total || 0));
+  const courseStarted = !hasCourses || enrollments.some((item) => item.itemType === 'course' && (item.status === 'in_progress' || item.status === 'completed'));
   const shouldShowBottomAction = scrollRatio >= 0.74 && modulesUnlocked;
   const shouldShowScrollDown = scrollRatio < 0.9;
   const lockedCourses = courses.filter((course) => {
@@ -737,43 +751,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
             ))}
           </div>
 
-          {hasExams && (
-            <div className="bg-white/10 border border-white/20 rounded-lg p-4 sm:p-5 space-y-3">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/90">
-                <KeyRound className="h-4 w-4" />
-                Search your assigned Package ID
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={packageSearchInput}
-                  onChange={(e) => setPackageSearchInput(e.target.value)}
-                  placeholder="e.g. PKG-AT-09041"
-                  className="flex-1 px-4 py-2.5 bg-white/95 text-ink placeholder:text-muted rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-white"
-                />
-                <button
-                  type="button"
-                  disabled={!packageSearchInput.trim()}
-                  onClick={() => {
-                    const term = packageSearchInput.trim().toLowerCase();
-                    const matched = term === packageId.toLowerCase() || (!!pkg.packageId && term === pkg.packageId.toLowerCase());
-                    if (matched) {
-                      setError('');
-                      launchDefaultModule();
-                    } else {
-                      setError('Package ID not found here. Confirm the ID from your recruiter email and try again.');
-                    }
-                  }}
-                  className="px-5 py-2.5 bg-ink hover:bg-black text-white text-sm font-bold rounded-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Search &amp; Launch Package
-                </button>
-              </div>
-              <p className="text-xs text-white/80">
-                Enter your Package ID to jump directly into this package workflow and continue from the correct step.
-              </p>
-            </div>
-          )}
+          {/* Package ID search removed per UX request */}
         </div>
 
         {error && <div className="p-3 bg-rose-50 text-rose-700 text-sm rounded-md border border-rose-200">{error}</div>}
@@ -1180,16 +1158,69 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
             <p className="text-xs text-muted">
               {courseCompleted
                 ? 'Coursework looks complete. Continue to your exam stage.'
-                : 'Continue your coursework, then proceed to exams.'}
+                : courseStarted
+                ? 'Coursework in progress — continue your training.'
+                : 'You can start your coursework here, then proceed to exams.'}
             </p>
             <button
               type="button"
               onClick={() => setActiveModule(courseCompleted && hasExams ? 'exam' : 'course')}
               className="shrink-0 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
             >
-              {courseCompleted && hasExams ? 'Complete Coursework & Start Exam' : 'Continue Coursework'}
+              {courseCompleted && hasExams ? 'Complete Coursework & Start Exam' : courseStarted ? 'Continue Coursework' : 'Start Coursework'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Floating Next / Back buttons to switch modules inside this package view (hidden when no target available) */}
+      <div aria-hidden>
+        {(() => {
+          const order = moduleSteps.map((s) => s.id).filter((id) => {
+            const step = moduleSteps.find((m) => m.id === id)!;
+            const lockedByFlow = id !== 'instructions' && !modulesUnlocked;
+            return !step.locked && !lockedByFlow;
+          });
+          const idx = order.indexOf(activeModule as any);
+          const prev = idx > 0 ? order[idx - 1] : null;
+          const next = idx < order.length - 1 ? order[idx + 1] : null;
+
+          return (
+            <>
+              {prev && (
+                <div className="fixed bottom-5 left-5 z-40">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule(prev as any)}
+                    className="w-12 h-12 rounded-full bg-white border border-line shadow-md flex items-center justify-center text-ink hover:text-brand-700"
+                    aria-label="Previous module"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+
+              {next && (
+                <div className="fixed bottom-5 right-5 z-40">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule(next as any)}
+                    className="w-12 h-12 rounded-full bg-white border border-line shadow-md flex items-center justify-center text-ink hover:text-brand-700"
+                    aria-label="Next module"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+            </>
+          );
+        })()}
+      </div>
+
+      {/* Transient toast for confirmations (e.g., course payment) */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50">
+          <div className="rounded-lg px-4 py-2 bg-emerald-600 text-white text-sm shadow">{toastMessage}</div>
         </div>
       )}
 

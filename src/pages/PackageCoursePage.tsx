@@ -232,7 +232,7 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
             <div className="rounded-lg border border-white/25 bg-white/10 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 3</p>
               <p className="text-sm font-semibold">Exams</p>
-              <p className="text-[11px] text-white/80 mt-1">{summary ? `${summary.exams.passed}/${summary.exams.total} passed` : 'Loading...'}</p>
+              <p className="text-[11px] text-white/80 mt-1">{summary ? '' : 'Loading...'}</p>
             </div>
             <div className="rounded-lg border border-white/25 bg-white/10 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Step 4</p>

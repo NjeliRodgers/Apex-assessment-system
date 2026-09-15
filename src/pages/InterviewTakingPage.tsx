@@ -336,12 +336,7 @@ export const InterviewTakingPage: React.FC<InterviewTakingPageProps> = ({ id, na
                   performance are what hiring partners will see.</li>
             </ul>
           </div>
-          <div className="bg-white rounded-lg border border-line px-5 py-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted uppercase tracking-wide font-mono">Cost</p>
-              <p className="font-display text-2xl font-bold text-ink">KSh {(access.costKsh || 0).toLocaleString()}</p>
-            </div>
-          </div>
+          {/* Interview fee hidden from initial view per UX request */}
           <button
             type="button"
             onClick={() => setShowPaymentModal(true)}
