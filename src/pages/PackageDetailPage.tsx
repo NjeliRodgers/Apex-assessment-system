@@ -401,7 +401,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         (item) =>
           item.itemType === 'course' &&
           item.itemId === course.id &&
-          item.packageId === packageId &&
           item.status !== 'failed' &&
           item.status !== 'pending'
       );
@@ -477,7 +476,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
       (item) =>
         item.itemType === 'course' &&
         item.itemId === course.id &&
-        item.packageId === packageId &&
         item.status !== 'failed'
     );
     return !enrollment || enrollment.status === 'pending';
@@ -488,7 +486,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
       (item) =>
         item.itemType === 'exam' &&
         item.itemId === exam.id &&
-        item.packageId === packageId &&
         item.status !== 'failed'
     );
     return enrollment?.status !== 'completed';
@@ -921,7 +918,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                         (item) =>
                           item.itemType === 'course' &&
                           item.itemId === course.id &&
-                          item.packageId === packageId &&
                           item.status !== 'failed'
                       );
                       const unlocked = !!enrollment && enrollment.status !== 'pending';
@@ -976,7 +972,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                         (item) =>
                           item.itemType === 'exam' &&
                           item.itemId === exam.id &&
-                          item.packageId === packageId &&
                           item.status !== 'failed'
                       );
                       const paid = !!enrollment && enrollment.status !== 'pending';
@@ -986,7 +981,6 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                             (item) =>
                               item.itemType === 'exam' &&
                               item.itemId === previousExam.id &&
-                              item.packageId === packageId &&
                               item.status !== 'failed'
                           )
                         : null;

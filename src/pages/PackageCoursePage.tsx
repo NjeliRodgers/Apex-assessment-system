@@ -79,7 +79,7 @@ export const PackageCoursePage: React.FC<PackageCoursePageProps> = ({
   }, [packageId]);
 
   const isCourseUnlocked = (courseId: string) =>
-    enrollments.some((e) => e.itemType === 'course' && e.itemId === courseId && e.status !== 'failed' && e.packageId === packageId);
+    enrollments.some((e) => e.itemType === 'course' && e.itemId === courseId && e.status !== 'failed');
 
   const anyUnlocked = courses.some((c) => isCourseUnlocked(c.id));
   const progressPercent = summary?.overall.completionPercent || 0;
