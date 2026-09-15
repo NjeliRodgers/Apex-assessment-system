@@ -571,24 +571,7 @@ export const CourseTakingPage: React.FC<CourseTakingPageProps> = ({ courseId, pa
         </button>
       )}
 
-      {showBottomProgressAction && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 px-3 w-full max-w-xl">
-          <div className="bg-white border border-line rounded-2xl shadow-[0_20px_45px_-24px_rgba(15,85,53,0.45)] px-4 py-3 flex items-center justify-between gap-3">
-            <p className="text-xs text-muted">
-              {allDone
-                ? 'Coursework complete. Continue to exams now.'
-                : 'Continue module reading and quizzes to unlock exams.'}
-            </p>
-            <button
-              type="button"
-              onClick={allDone ? onGoToExam : () => window.scrollBy({ top: Math.round(window.innerHeight * 0.72), behavior: 'smooth' })}
-              className="shrink-0 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
-            >
-              {allDone ? 'Complete Coursework & Start Exam' : 'Continue Coursework'}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Bottom floating coursework progress prompt removed per UX request */}
 
       {showPdf && activeModule?.documentUrl && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">

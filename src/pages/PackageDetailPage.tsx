@@ -106,6 +106,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
+  const [receiptEnrollment, setReceiptEnrollment] = useState<ApexEnrollment | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const showToast = (msg: string, ms = 3500) => {
     setToastMessage(msg);
@@ -208,6 +210,9 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         await refreshProgress();
         setPayingCourseId(null);
         showToast('Course payment confirmed — training unlocked');
+        // Show a clear receipt modal with enrollment details; user can open the course from the modal.
+        setReceiptEnrollment(pendingEnrollment);
+        setReceiptOpen(true);
         return;
       }
 
@@ -219,17 +224,20 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         currency: 'KES',
         ref: reference,
         metadata: { enrollmentId: pendingEnrollment.id, itemType: 'course', itemId: courseId, packageId },
-        callback: (response) => {
-          verifyEnrollmentPaymentApi(pendingEnrollment.id, response.reference)
-            .then(async () => {
-              await refreshProgress();
-              showToast('Course payment confirmed — training unlocked');
-            })
-            .catch((err: any) => {
-              setError(err.message || `We could not confirm your payment. Reference: ${response.reference}`);
-            })
-            .finally(() => setPayingCourseId(null));
-        },
+            callback: (response) => {
+              verifyEnrollmentPaymentApi(pendingEnrollment.id, response.reference)
+                .then(async (enrollment) => {
+                  await refreshProgress();
+                  showToast('Course payment confirmed — training unlocked');
+                  // Show receipt and let the user continue into the course explicitly.
+                  setReceiptEnrollment(enrollment);
+                  setReceiptOpen(true);
+                })
+                .catch((err: any) => {
+                  setError(err.message || `We could not confirm your payment. Reference: ${response.reference}`);
+                })
+                .finally(() => setPayingCourseId(null));
+            },
         onClose: () => setPayingCourseId(null)
       });
 
@@ -438,52 +446,58 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     setActiveModule('screening');
   };
 
-  const moduleSteps = [
-    {
-      id: 'instructions' as const,
-      title: 'Instructions',
-      subtitle: termsAccepted ? 'Accepted' : 'Read and accept',
-      icon: <ListChecks className="h-4 w-4" />,
-      locked: false
-    },
-    {
-      id: 'course' as const,
-      title: 'Course',
-      subtitle: hasCourses
-        ? `${summary?.courses.completed || 0}/${summary?.courses.total || courses.length} completed`
-        : 'Not required',
-      icon: <BookOpen className="h-4 w-4" />,
-      locked: !modulesUnlocked || !hasCourses
-    },
-    {
-      id: 'exam' as const,
-      title: 'Exam',
-      subtitle: hasExams
-        ? `${summary?.exams.passed || 0}/${summary?.exams.total || exams.length} passed`
-        : 'Not required',
-      icon: <FileCheck2 className="h-4 w-4" />,
-      locked: !modulesUnlocked || !hasExams
-    },
-    {
-      id: 'screening' as const,
-      title: 'Screening',
-      subtitle: hasInterview
-        ? interviewUnlocked
-          ? summary?.interview.completed
-            ? 'Completed'
-            : 'Unlocked'
-          : 'Locked'
-        : 'Not required',
-      icon: <Bot className="h-4 w-4" />,
-      locked: !hasInterview
+  const moduleSteps = (() => {
+    const steps: Array<{ id: 'instructions' | 'course' | 'exam' | 'screening'; title: string; subtitle: string; icon: React.ReactNode; locked: boolean }> = [
+      {
+        id: 'instructions',
+        title: 'Instructions',
+        subtitle: termsAccepted ? 'Accepted' : 'Read and accept',
+        icon: <ListChecks className="h-4 w-4" />,
+        locked: false
+      },
+      {
+        id: 'course',
+        title: 'Course',
+        subtitle: hasCourses
+          ? `${summary?.courses.completed || 0}/${summary?.courses.total || courses.length} completed`
+          : 'Not required',
+        icon: <BookOpen className="h-4 w-4" />,
+        locked: !modulesUnlocked || !hasCourses
+      },
+      {
+        id: 'exam',
+        title: 'Exam',
+        subtitle: hasExams
+          ? `${summary?.exams.passed || 0}/${summary?.exams.total || exams.length} passed`
+          : 'Not required',
+        icon: <FileCheck2 className="h-4 w-4" />,
+        locked: !modulesUnlocked || !hasExams
+      }
+    ];
+
+    // Only include the Screening step in the UI when all exams are passed
+    // and the package actually includes an interview stage. Users who have
+    // not passed all exams should never see the Screening tab.
+    if (hasInterview && allExamsPassed) {
+      steps.push({
+        id: 'screening',
+        title: 'Screening',
+        subtitle: summary?.interview.completed ? 'Completed' : 'Unlocked',
+        icon: <Bot className="h-4 w-4" />,
+        locked: false
+      });
     }
-  ];
+
+    return steps;
+  })();
 
   const completionPercent = summary?.overall.completionPercent || 0;
   const totalCourseCost = courses.reduce((sum, course) => sum + Number(course.costKsh || 0), 0);
   const courseCompleted = !hasCourses || ((summary?.courses.completed || 0) >= (summary?.courses.total || 0));
   const courseStarted = !hasCourses || enrollments.some((item) => item.itemType === 'course' && (item.status === 'in_progress' || item.status === 'completed'));
-  const shouldShowBottomAction = scrollRatio >= 0.74 && modulesUnlocked;
+  // Show bottom action only when modules are unlocked and the user has either
+  // started or completed the coursework (i.e., they paid or redeemed access).
+  const shouldShowBottomAction = scrollRatio >= 0.74 && modulesUnlocked && (courseStarted || courseCompleted);
   const shouldShowScrollDown = scrollRatio < 0.9;
   const lockedCourses = courses.filter((course) => {
     const enrollment = enrollments.find(
@@ -495,6 +509,16 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     return !enrollment || enrollment.status === 'pending';
   });
   const primaryLockedCourse = lockedCourses[0] || null;
+  const firstUnlockedCourse = courses.find((course) => {
+    const enrollment = enrollments.find(
+      (item) =>
+        item.itemType === 'course' &&
+        item.itemId === course.id &&
+        item.status !== 'failed' &&
+        item.status !== 'pending'
+    );
+    return !!enrollment;
+  }) || null;
   const firstIncompleteExamIndex = exams.findIndex((exam) => {
     const enrollment = enrollments.find(
       (item) =>
@@ -506,39 +530,44 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
   });
   const visibleExamLimit = firstIncompleteExamIndex === -1 ? exams.length : firstIncompleteExamIndex + 1;
   const visibleExams = exams.slice(0, visibleExamLimit);
-  const hiddenExamsCount = Math.max(0, exams.length - visibleExams.length);
-  const stepCards = [
-    {
-      id: 'read',
-      label: 'Read & Accept',
-      detail: 'Module 1 terms and guidance',
-      done: termsAccepted
-    },
-    {
-      id: 'course',
-      label: 'Course Training',
-      detail: hasCourses ? `${summary?.courses.completed || 0}/${summary?.courses.total || courses.length} completed` : 'Not required in this package',
-      done: !hasCourses || ((summary?.courses.completed || 0) >= (summary?.courses.total || 0))
-    },
-    {
-      id: 'exam',
-      label: 'Exams',
-      detail: hasExams ? `${summary?.exams.passed || 0}/${summary?.exams.total || exams.length} passed` : 'Not required in this package',
-      done: !hasExams || allExamsPassed
-    },
-    {
-      id: 'interview',
-      label: 'Job Screening',
-      detail: hasInterview
-        ? summary?.interview.completed
-          ? 'Completed'
-          : interviewUnlocked
-          ? 'Unlocked'
-          : 'Locked until all exams pass'
-        : 'Not required in this package',
-      done: !hasInterview || !!summary?.interview.completed
+  const stepCards = (() => {
+    const cards: Array<{ id: string; label: string; detail: string; done: boolean }> = [
+      {
+        id: 'read',
+        label: 'Read & Accept',
+        detail: 'Module 1 terms and guidance',
+        done: termsAccepted
+      },
+      {
+        id: 'course',
+        label: 'Course Training',
+        detail: hasCourses
+          ? `${summary?.courses.completed || 0}/${summary?.courses.total || courses.length} completed`
+          : 'Not required in this package',
+        done: !hasCourses || ((summary?.courses.completed || 0) >= (summary?.courses.total || 0))
+      },
+      {
+        id: 'exam',
+        label: 'Exams',
+        detail: hasExams
+          ? `${summary?.exams.passed || 0}/${summary?.exams.total || exams.length} passed`
+          : 'Not required in this package',
+        done: !hasExams || allExamsPassed
+      }
+    ];
+
+    if (hasInterview && allExamsPassed) {
+      cards.push({
+        id: 'interview',
+        label: 'Job Screening',
+        detail: summary?.interview.completed ? 'Completed' : 'Unlocked',
+        done: !!summary?.interview.completed
+      });
     }
-  ];
+
+    return cards;
+  })();
+
 
   const moduleLockMessage = 'Read Module 1 and accept the terms first to unlock the next modules.';
 
@@ -561,7 +590,8 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
     }
 
     setShowStartTrainingModal(false);
-    setActiveModule('course');
+    // Only initiate payment here. Navigate to the coursework only after
+    // the payment is successfully verified in the handler below.
     void handlePayForCourse(primaryLockedCourse.id);
   };
 
@@ -1017,18 +1047,14 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                       );
                     })}
 
-                    {hiddenExamsCount > 0 && (
-                      <div className="rounded-lg border border-dashed border-line bg-white p-4 text-xs text-muted">
-                        {hiddenExamsCount} upcoming exam{hiddenExamsCount === 1 ? '' : 's'} will unlock after you complete the current exam.
-                      </div>
-                    )}
+                    {/* Hidden upcoming exams notice removed per UX: users should not see upcoming exam count. */}
 
                     {exams.length === 0 && <p className="text-sm text-muted">No exam is assigned to this package.</p>}
                   </div>
                 </div>
               )}
 
-              {activeModule === 'screening' && (
+              {hasInterview && allExamsPassed && activeModule === 'screening' && (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-line bg-slate-50 p-5">
                     <h3 className="font-display text-lg font-bold text-ink">International Job Screening</h3>
@@ -1152,26 +1178,7 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
         </button>
       )}
 
-      {shouldShowBottomAction && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 px-3 w-full max-w-lg">
-          <div className="bg-white border border-line rounded-2xl shadow-[0_20px_45px_-24px_rgba(15,85,53,0.45)] px-4 py-3 flex items-center justify-between gap-3">
-            <p className="text-xs text-muted">
-              {courseCompleted
-                ? 'Coursework looks complete. Continue to your exam stage.'
-                : courseStarted
-                ? 'Coursework in progress — continue your training.'
-                : 'You can start your coursework here, then proceed to exams.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => setActiveModule(courseCompleted && hasExams ? 'exam' : 'course')}
-              className="shrink-0 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
-            >
-              {courseCompleted && hasExams ? 'Complete Coursework & Start Exam' : courseStarted ? 'Continue Coursework' : 'Start Coursework'}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Bottom floating coursework prompt removed per UX request */}
 
       {/* Floating Next / Back buttons to switch modules inside this package view (hidden when no target available) */}
       <div aria-hidden>
@@ -1377,6 +1384,48 @@ export const PackageDetailPage: React.FC<PackageDetailPageProps> = ({
                 className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
               >
                 Continue to Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {receiptOpen && receiptEnrollment && (
+        <div className="fixed inset-0 z-60 bg-slate-900/55 flex items-center justify-center p-4" onClick={() => setReceiptOpen(false)}>
+          <div className="w-full max-w-md bg-white rounded-2xl border border-line shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">Payment receipt</p>
+              <h3 className="font-display text-lg font-bold text-ink mt-1">Payment confirmed</h3>
+              <p className="text-sm text-muted mt-2">Your payment was successfully verified. Keep this reference for support.</p>
+            </div>
+
+            <div className="rounded-lg border border-line bg-fog p-4 space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted">Enrollment</span><span className="font-medium">{receiptEnrollment.id}</span></div>
+              <div className="flex justify-between"><span className="text-muted">Item</span><span className="font-medium">{receiptEnrollment.itemName || receiptEnrollment.itemId}</span></div>
+              <div className="flex justify-between"><span className="text-muted">Amount paid</span><span className="font-medium">KSh {receiptEnrollment.amountPaidKsh?.toLocaleString() || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-muted">Reference</span><span className="font-medium">{receiptEnrollment.paymentRef || '—'}</span></div>
+            </div>
+
+            <div className="pt-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setReceiptOpen(false)}
+                className="px-4 py-2 rounded-lg border border-line text-xs font-semibold text-muted hover:text-ink hover:bg-fog cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReceiptOpen(false);
+                  // Open the course/module view after confirmation
+                  if (receiptEnrollment && receiptEnrollment.itemType === 'course') {
+                    onStartCourse(receiptEnrollment.itemId);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold cursor-pointer"
+              >
+                Open Course
               </button>
             </div>
           </div>
