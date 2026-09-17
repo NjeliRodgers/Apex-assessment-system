@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 200">
+  <rect width="700" height="200" fill="#FFFFFF"/>
+  <text x="30" y="90" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="48" letter-spacing="1" fill="#14141A">ATESTA<tspan fill="#1F6F4A" dx="14">ASSESSMENT</tspan></text>
+  <text x="31" y="122" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="16" letter-spacing="3" fill="#8A8F98">INTERNATIONAL EXAMINATION BOARD</text>
+  <rect x="30" y="140" width="640" height="4" fill="#1F6F4A"/>
+</svg>
