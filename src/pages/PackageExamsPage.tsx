@@ -239,6 +239,19 @@ export const PackageExamsPage: React.FC<PackageExamsPageProps> = ({ packageId, c
           </div>
         </div>
 
+        {!allExamsPassed && summary && summary.exams.total > 1 && summary.exams.passed > 0 && (
+          <div className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-5 sm:p-6">
+            <p className="font-mono text-[11px] font-semibold tracking-[0.14em] text-brand-600 uppercase">Keep going</p>
+            <h2 className="font-display text-lg font-bold text-ink mt-1">
+              {summary.exams.passed} of {summary.exams.total} exams passed
+            </h2>
+            <p className="text-sm text-muted mt-1">
+              {summary.exams.nextExamName ? `Your next exam is "${summary.exams.nextExamName}". ` : ''}
+              The AI interview only unlocks after you pass every exam in this package.
+            </p>
+          </div>
+        )}
+
         {allExamsPassed && (
           <div className="bg-white rounded-lg border border-line shadow-[0_1px_2px_rgba(15,85,53,0.06)] p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

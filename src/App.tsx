@@ -232,6 +232,7 @@ const AuthedGate: React.FC = () => {
       return (
         <ExamTakingPage
           examId={screen.examId}
+          packageId={screen.packageId}
           onBack={
             screen.packageId
               ? () => setScreen({ view: 'detail', itemType: 'package', itemId: screen.packageId! })

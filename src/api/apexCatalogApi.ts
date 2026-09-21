@@ -343,6 +343,7 @@ export interface PackageProgressSummary {
     paid: number;
     passed: number;
     pendingResultReview: number;
+    nextExamName?: string | null;
   };
   interview: {
     required: boolean;

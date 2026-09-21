@@ -4,6 +4,7 @@ import { CheckCircle2, Clock, ClipboardCheck, LoaderCircle, XCircle } from 'luci
 
 interface ExamTakingPageProps {
   examId: string;
+  packageId?: string; // set when the exam is opened from a certification package
   onBack: () => void;
 }
 
@@ -14,7 +15,7 @@ const formatCountdown = (totalSeconds: number): string => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ examId, onBack }) => {
+export const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ examId, packageId, onBack }) => {
   const [examName, setExamName] = useState('');
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -124,12 +125,19 @@ export const ExamTakingPage: React.FC<ExamTakingPageProps> = ({ examId, onBack }
             Our Talent Acquisition Team will Review your Exam and you will receive your score on your Email within 24 Hours 
           </p>
 
+          {packageId && (
+            <p className="text-xs text-muted leading-relaxed">
+              This exam is part of a certification package. If you pass, your next exam (if the package has one) opens on
+              your package page. The AI interview only unlocks after you have passed every exam in the package.
+            </p>
+          )}
+
           <button
             type="button"
             onClick={onBack}
             className="text-xs font-semibold text-brand-700 hover:text-brand-800 cursor-pointer"
           >
-            Back to catalog
+            {packageId ? 'Back to your package' : 'Back to catalog'}
           </button>
         </div>
       </div>
